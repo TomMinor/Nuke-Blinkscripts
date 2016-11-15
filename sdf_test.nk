@@ -1,0 +1,61 @@
+#! /mnt/netdev/tom.minor/Nuke/Nuke10.0Dev.000001b/libnuke-10.0.so -nx
+version 10.0 v0.000001b
+define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
+<layout version="1.0">
+    <window x="0" y="26" w="1055" h="1029" screen="0">
+        <splitter orientation="1">
+            <split size="491"/>
+            <splitter orientation="2">
+                <split size="321"/>
+                <dock id="" activePageId="Error Console.1">
+                    <page id="uk.co.thefoundry.scripteditor.2"/>
+                    <page id="Error Console.1"/>
+                </dock>
+                <split size="650"/>
+                <dock id="" activePageId="Properties.1">
+                    <page id="Properties.1"/>
+                </dock>
+            </splitter>
+            <split size="556"/>
+            <splitter orientation="2">
+                <split size="690"/>
+                <dock id="" activePageId="Viewer.1">
+                    <page id="Viewer.1"/>
+                </dock>
+                <split size="281"/>
+                <dock id="" hideTitles="1" activePageId="DAG.1">
+                    <page id="DAG.1"/>
+                </dock>
+            </splitter>
+        </splitter>
+    </window>
+</layout>
+}
+Root {
+ inputs 0
+ name /mnt/netdev/tom.minor/dev/blinktracer/sdf_test.nk
+ format "1280 720 0 0 1280 720 1 HD_720"
+ proxy_type scale
+ proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
+ colorManagement Nuke
+}
+BlinkScript {
+ inputs 0
+ kernelSourceFile /mnt/netdev/tom.minor/dev/blinktracer/sdf_renderer.rpp
+ recompileCount 219
+ ProgramGroup 1
+ KernelDescription "2 \"TestKernel\" iterate pixelWise bf5b21a42f7a0c222cb9635eb0473d5fe9e1a91366940b89e6a6a8c374557564 1 \"dst\" Write Point 6 \"Image Resolution\" Int 2 AAUAANACAAA= \"Max Iterations\" Int 1 ZAAAAA== \"Camera Position\" Float 3 AAAAAAAAAAAAACBBAAAAAA== \"Camera Direction\" Float 3 AAAAAAAAAAAAAIC/AAAAAA== \"Camera Up\" Float 3 AAAAAAAAgD8AAAAAAAAAAA== \"Field Of View\" Float 1 AABIQg== 6 \"resolution\" 2 1 \"iterations\" 1 1 \"camPos\" 3 1 \"camDir\" 3 1 \"camUp\" 3 1 \"fov\" 1 1 2 \"MAX_DIST\" Float 1 1 AAAAAA== \"EPSILON\" Float 1 1 AAAAAA=="
+ kernelSource "#include \"sdf_functions.h\"\n#include \"sdf_primitives.h\"\n\nkernel TestKernel : ImageComputationKernel<ePixelWise>\n\{\n\t// No input data needed\n\tImage<eWrite, eAccessPoint, eEdgeNone> dst;\n\n\tparam:\n\tint2 resolution;\n\tint iterations;\n\t\n\tfloat3 camPos;\n\tfloat3 camDir;\n\tfloat3 camUp;\n\tfloat fov;\n\n\tvoid define()\n\t\{\n\t\tdefineParam(resolution, \"Image Resolution\", int2(1280, 720) );\n\t\tdefineParam(iterations, \"Max Iterations\", 100);\n\n\t\tdefineParam(camPos, \"Camera Position\", float3(0.0f, 0.0f, 10.0f) );\n\t\tdefineParam(camDir, \"Camera Direction\", float3(0.0f, 0.0f, -1.0f) );\n\t\tdefineParam(camUp, \"Camera Up\", float3(0.0f, 1.0f, 0.0f) );\n\n\t\tdefineParam(fov, \"Field Of View\", 50.0f);\n\t\}\n\n\tlocal:\n\tconst float MAX_DIST = 999999.9f;\n\tconst float EPSILON = 0.01f;\n\n\tvoid init()\n\t\{\n\t\}\n\n\tfloat intersectScene(float3 _p)\n\t\{\n\t\tfloat d1 = sdSphere(_p, 0.4f);\n\n\t\treturn d1;\n\t\}\n\n\tfloat3 shade(float3 _p, float3 _n)\n\t\{\n\t\treturn float3(1.0f, 1.0f, 1.0f);\n\t\}\n\n\tfloat3 cameraRay(int2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)\n\t\{\n\t\t// for testing only\n\t\t_camDir = normalize(_camDir);\n\t\t//\n\n\t\tfloat fovx = PI * _fov/360.0f;\n\t\tfloat fovy = fovx * (resolution.y / resolution.x);\n\n\t\tfloat ulen = tan(fovx);\n\t\tfloat vlen = tan(fovy);\n\t\tfloat2 uv = float2(_fragcoord.x, _fragcoord.y) / float2(resolution.x, resolution.y);\n\n\t\t// Generate ray\n\t\tfloat2 normalisedUV = (uv * 2.0) - float2(1.0f, 1.0f);\n\t\tfloat3 basisright = normalize(cross( _camUp, _camDir));\n\t\tfloat3 pixelPos = _camPos + _camDir + basisright*normalisedUV.x*ulen + _camUp*normalisedUV.y*vlen;\n\t\treturn normalize(pixelPos - _camPos);\n\t\}\n\n\tfloat3 traceWorld(float3 _p, float3 _dir)\n\t\{\n\t\tfloat dist = 0.0f;\n\t\t\n\t\tfor(int i = 0; i < iterations; ++i)\n\t\t\{\n\t\t\tfloat3 hit = _p + (dist*_dir);\n\t\t\tfloat t = intersectScene( hit );\n\n\t\t\tif(t < 0.01f)\n\t\t\t\{\n\t\t\t\tfloat3 nrm = float3(0.0f, 0.0f, 0.0);\n\t\t\t\treturn shade(hit, nrm);\n\t\t\t\}\n\n\t\t\tdist += t;\n\t\t\}\n\n\t\treturn float3(0.0f, 0.4f, 0.0f);\n\t\}\n\n\tvoid process(int2 pos)\n\t\{\n\t\tfloat3 ro = camPos;\n\t\tfloat3 rd = cameraRay(pos, camPos, camDir, camUp, fov);\n\n\t\tfloat3 colour = traceWorld(ro, rd);\n\n\t\tdst() = float4(colour.x, colour.y, colour.z, 1.0);\n\t\}\n\};"
+ rebuild ""
+ rebuild_finalise ""
+ name BlinkScript1
+ selected true
+ xpos -225
+ ypos -20
+}
+Viewer {
+ frame_range 1-100
+ name Viewer1
+ xpos -225
+ ypos 48
+}
