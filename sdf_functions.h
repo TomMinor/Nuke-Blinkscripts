@@ -2,6 +2,11 @@
 // Replacement GLSL style functions for the builtins / missing functionality
 // ---------------------------------------------------------------------------
 
+float fract( float _x )
+{
+	return _x - floor(_x);
+}
+
 float radians(float _degrees)
 {
 	return (PI * _degrees) / 180.0f;

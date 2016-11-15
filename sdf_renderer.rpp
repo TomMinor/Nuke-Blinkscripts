@@ -2,9 +2,11 @@
 #include "sdf_primitives.h"
 
 ///**** TODO ****
-// * Make the scene the foundry logo?
+// * Define camera via rotation angles
 // * Antialias
 // * Shadows
+// * Make the scene the foundry logo?
+// * Check the cool posts about magnetic pole stuff I found ages ago
 
 kernel TestKernel : ImageComputationKernel<ePixelWise>
 {
@@ -19,6 +21,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	float3 camDir;
 	float3 camUp;
 	float fov;
+	int aa_samples;
 
 	void define()
 	{
@@ -30,34 +33,59 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		defineParam(camUp, "Camera Up", float3(0.0f, 1.0f, 0.0f) );
 
 		defineParam(fov, "Field Of View", 50.0f);
+
+		defineParam(aa_samples, "AntiAliasing Samples", 4);
 	}
 
 	local:
-	const float MAX_DIST = 999999.9f;
-	const float EPSILON = 0.01f;
-
+	// Careful, these constants don't seem to be properly initialised
+	const float MAX_DIST = 9999999.9f;
+	
+	static const int MAX_LIGHTS = 1;
+	float3 light_position[MAX_LIGHTS];
+	float3 light_colour[MAX_LIGHTS];
+	
 	void init()
 	{
+		light_position[0]   = float3(5.0f, 8.0f, 0.0f);
+		light_colour[0] 	= float3(0.5f, 0.4f, 0.0f);
+	}
+
+	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+	float rand(float2 _co)
+	{
+ 	   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);
 	}
 
 	float intersectScene(float3 _p)
 	{
-		float d1 = sdSphere(_p, 0.4f);
+		float d1 = sdBox(_p, float3(1.0f, 1.0f, 1.0f) );
 
 		return d1;
 	}
 
 	float3 shade(float3 _p, float3 _n)
 	{
-		return float3(1.0f, 1.0f, 1.0f);
+		float3 light_dir = normalize( _p - light_position[0] );
+
+		return dot(light_dir, _n);
 	}
 
 	float3 estimate_normal(float3 _p)
 	{
+		float normal_epsilon = 0.001f;
+		float3 dx = float3(normal_epsilon, 0.0f, 0.0f);
+		float3 dy = float3(0.0f, normal_epsilon, 0.0f);
+		float3 dz = float3(0.0f, 0.0f, normal_epsilon);
 
+		return normalize(float3(
+				intersectScene(_p + dx) - intersectScene(_p - dx),
+				intersectScene(_p + dy) - intersectScene(_p - dy),
+				intersectScene(_p + dz) - intersectScene(_p - dz)
+			));
 	}
 
-	float3 cameraRay(int2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)
+	float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)
 	{
 		_camDir = normalize(_camDir);
 		float3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);
@@ -83,9 +111,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float3 hit = _p + (dist*_dir);
 			float t = intersectScene( hit );
 
-			if(t < 0.01f)
+			if(t < 0.001f)
 			{
-				float3 nrm = float3(0.0f, 0.0f, 0.0);
+				float3 nrm = estimate_normal(hit);
 				return shade(hit, nrm);
 			}
 
@@ -97,10 +125,18 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	void process(int2 pos)
 	{
-		float3 ro = camPos;
-		float3 rd = cameraRay(pos, camPos, camDir, camUp, fov);
+		float3 colour = float3(0.0f, 0.0f, 0.0f);
 
-		float3 colour = traceWorld(ro, rd);
+		float3 ro = camPos;
+		float2 uv = float2(pos.x, pos.y);
+		for(int j=0; j<aa_samples; j++)
+		{
+			float2 random_sample = rand( uv + (float2(j,j) * 0.1f) );
+
+			float3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);
+			colour += traceWorld(ro, rd);
+		}
+		colour /= aa_samples;
 
 		dst() = float4(colour.x, colour.y, colour.z, 1.0);
 	}
