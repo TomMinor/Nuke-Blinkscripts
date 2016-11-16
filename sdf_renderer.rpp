@@ -4,8 +4,9 @@
 
 ///**** TODO ****
 // * Define camera via rotation angles
+// * Lighting calculations are screwed up, negative colours
+// * Check if space is inverted somehow?
 // * Antialias
-// * Shadows
 // * Make the scene the foundry logo?
 // * Check the cool posts about magnetic pole stuff I found ages ago
 
@@ -30,6 +31,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	float normal_epsilon;
 
 	float user[9];
+	float user2[9];
 
 	void define()
 	{
@@ -50,6 +52,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		// Convenience for scene editing
 		defineParam(user, "User");
+		defineParam(user2, "User2");
 	}
 
 	local:
@@ -63,13 +66,18 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	
 	void init()
 	{
-		light_position[0]   = float3(3.0f, -8.0f, -1.0f);
+		// light_position[0]   = float3(3.0f, -8.0f, -1.0f);
+		light_position[0]   = float3(3.0f, 8.0f, -2.0f);
 		light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
 		light_strength[0]	= 180.0f;
 
-		light_position[1]   = float3(-3.0f, 3.0f, -4.0f);
+		light_position[1]   = float3(-3.0f, 3.0f, -2.0f);
 		light_colour[1] 	= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);
 		light_strength[1]	= 40.0f;
+
+		// light_position[0]   = float3(0.0f, 8.0f, 0.0f);
+		// light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
+		// light_strength[0]	= 300.0f;
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -80,38 +88,35 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	float sdMandelbulb(float3 _p, float _power, float _iterations)
 	{
-		float3 zn = _p;
 		const float sq_threshold = 2.0f; // Divergence threshold
+		const float s = 0.9f;
 
+		float3 zn = _p;
 		float rad = 0.0f;
 		float dist = 0.0f;
 		float d = 1.0f;
-
-		const float s = 0.9f;
         float k = 1.0f;
 
-		int i = _iterations;
-		while(i--)
+		for(int i = 0; i < _iterations; i++)
 		{
 			rad = length(zn);
 
 			if(rad > sq_threshold)
 			{
-				dist = 0.5f * rad * float(log(rad))/d;
+				dist = 0.5f * log(rad) * rad/float(d);
 			}
 			else
 			{
 				float th = atan2( length( float3(zn.x, zn.y, 0.0f) ), zn.z);
 				float phi = atan2( zn.y, zn.x );
 				float rado = pow(rad, _power);
-				
-				d = pow(rad, _power - 1) * (_power-1) * d + 1.0f;
+				d = pow(rad, _power - 1.0f) * (_power - 1.0f) * d + 1.0f;
 
 				float sint = sin(th * _power);
 				zn.x = rado * sint * cos(phi * _power);
 				zn.y = rado * sint * sin(phi * _power);
 				zn.z = rado * cos(th * _power);
-				zn += _power;
+				zn += _p;
 			}
 
 			k *= s;
@@ -123,15 +128,19 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	float map(float3 _p)
 	{
 		float3 p = _p;
-		float d1 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
+		float d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
 		
 		p = p - float3(0.0f, user[1], 0.0f);
 		// p = repeatXYZ(p, float3(user[0], user[0], user[0]) );
 		// float d2 = sdSphere(p, 0.1f);
 		// float d2 = sdBox(p, float3(0.1f) );
-		float d2 = sdMandelbulb(p, 8.0f, 16);
+
+		float3 p2 = _p - float3(user[6], user[7], user[8]);
+		// float d1 = sdBox(p2, float3(0.3f, 0.3f, 0.3f) );
+		float d1 = sdSphere(p2, 0.5f);
+		float d2 = sdMandelbulb(p, user[2], int(user[5]));
 		
-		return d2;//min(d1,d2);
+		return min(min(d1,d2),d3);
 	}
 
 		// Classic AO
@@ -229,22 +238,22 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		// Back step the normal
 		_p = _p + (-0.01f * _n);
 
-		float3 radiance = float3(0.0f, 0.0f, 0.0f);
+		float3 radiance = float3(0.0f);
 
 		for(int i = 0; i < MAX_LIGHTS; i++)
 		{
 			float3 light_path = _p - light_position[i];
 			float3 light_dir = normalize(light_path);
 			float attenuation = 1.0f / pow(length(light_path), 2);
-			float diffuse = dot(normalize(_n), light_dir);
+			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
 
-			float shadowed = softshadow(light_path, light_dir, user[6], user[7], user[8]);
+			float shadowed = softshadow(_p, -light_dir, 0.1f, 100.0f, 8.14f);
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
-			radiance += (diffuse * light_colour[i] * light_strength[i] * attenuation) * shadowed;
+			radiance += (halflambert * light_colour[i] * light_strength[i] * attenuation) * shadowed;
 		}
 
-		return radiance;// * hemisphericalOcclusion(_p, _n, user[3], user[4]);
+		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
 	}
 
 	// float estimate_occlusion(float3 _p, float3 _n)
@@ -305,6 +314,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	void process(int2 pos)
 	{
+		float4x4 MVP = float4x4_identity;
+
 		float3 colour = float3(0.0f, 0.0f, 0.0f);
 
 		// By the way, I'm not sure about all GPUs, but a lot aren't fond of nesting things inside the loop. Taking the lighting calculations outside the main raymarching loop produces a noticeable (20fps to 60fps) framerate increase on the machine I'm currently on, and, I'd imagine, on a lot of other people's also.
