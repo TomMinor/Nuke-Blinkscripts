@@ -246,8 +246,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	float3 shade(float3 _p, float3 _n)
 	{
-		// Back step the normal
-		_p = _p + (-0.01f * _n);
+		// Back step along the normal
+		_p -= (0.01f * _n);
 
 		float3 radiance = float3(0.0f);
 
@@ -258,13 +258,13 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float attenuation = 1.0f / pow(length(light_path), 2);
 			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
 
-			float shadowed = softshadow(_p, -light_dir, 0.1f, 100.0f, 8.14f);
+			float shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 4.0f);
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
 			radiance += (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
 		}
 
-		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
+		return radiance;// * hemisphericalOcclusion(_p, _n, user[3], user[4]);
 	}
 
 	// float estimate_occlusion(float3 _p, float3 _n)
