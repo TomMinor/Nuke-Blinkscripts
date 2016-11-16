@@ -114,7 +114,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 			if(rad > sq_threshold)
 			{
-				dist = 0.5f * log(rad) * rad/float(d);
+				dist = 0.5f * rad * log(rad)/float(d);
 			}
 			else
 			{
@@ -246,9 +246,6 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	float3 shade(float3 _p, float3 _n)
 	{
-		// Back step along the normal
-		_p -= (0.01f * _n);
-
 		float3 radiance = float3(0.0f);
 
 		for(int i = 0; i < MAX_LIGHTS; i++)
@@ -264,7 +261,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			radiance += (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
 		}
 
-		return radiance;// * hemisphericalOcclusion(_p, _n, user[3], user[4]);
+		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
 	}
 
 	// float estimate_occlusion(float3 _p, float3 _n)
@@ -302,25 +299,28 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		return rayDir;
 	}
 
-	float3 traceWorld(float3 _p, float3 _dir)
+	bool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit)
 	{
 		float dist = 0.0f;
 		
-		for(int i = 0; i < iterations; ++i)
+		for(int i = 0; i < _iterations; ++i)
 		{
 			float3 hit = _p + (dist*_dir);
 			float t = map( hit );
 
 			if(t < epsilon)
 			{
-				float3 nrm = estimate_normal(hit);
-				return shade(hit, nrm);
+				// float3 nrm = estimate_normal(hit);
+				// return shade(hit, nrm);
+				_hit = hit;
+				return true;
 			}
 
 			dist += t;
 		}
 
-		return float3(0.2f, 0.2f, 0.2f);
+		// return float3(0.2f, 0.2f, 0.2f);
+		return false;
 	}
 
 	void process(int2 pos)
@@ -339,7 +339,19 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float2 random_sample = rand( uv + (float2(j,j) * 0.1f) );
 
 			float3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);
-			colour += traceWorld(ro, rd);
+
+			float3 hit = float3(0.0f);;
+			if( traceWorld(ro, rd, iterations, hit) )
+			{
+				// More iterations to add more surface detail
+				traceWorld(ro, rd, iterations * 4, hit);
+				float3 nrm = estimate_normal(hit);
+				
+				// Back step along the normal
+				// hit -= (0.025f * nrm);
+				hit -= (user2[0] * nrm);
+				colour += shade(hit, nrm);
+			}
 		}
 		colour /= aa_samples;
 
