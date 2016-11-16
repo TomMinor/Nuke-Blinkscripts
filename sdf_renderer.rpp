@@ -34,8 +34,11 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	int aa_samples;
 	int occlusion_samples;
 	float fog_b;
-	float3 orbit_trap_colour;
+	
+	float3 trap_colour_a;
+	float3 trap_colour_b;
 	float orbit_trap_intensity;
+	float3 orbit_trap_offset;
 
 	float epsilon;
 	float normal_epsilon;
@@ -61,8 +64,10 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
 		defineParam(occlusion_samples, "Occlusion Samples", 6);
 		defineParam(fog_b, "Fog B", 0.5f);
-		defineParam(orbit_trap_colour, "Orbit Trap Colour", float3(0.6f, 0.4f, 0.0f) );
+		defineParam(trap_colour_a, "Orbit Trap Colour A", float3(0.6f, 0.4f, 0.0f) );
+		defineParam(trap_colour_b, "Orbit Trap Colour B", float3(0.3f, 0.2f, 0.8f) );
 		defineParam(orbit_trap_intensity, "Orbit Trap Intensity", 1.0f);
+		defineParam(orbit_trap_offset, "Orbit Trap Offset", float3(0.0f));
 
 		defineParam(epsilon, "Scene Epsilon", 0.01f);
 		defineParam(normal_epsilon, "Normal Epsilon", 0.001f);
@@ -101,7 +106,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
  	   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);
 	}
 
-	float sdMandelbulb(float3 _p, float _power, float _iterations)
+	float sdMandelbulb(float3 _p, float _power, float _iterations, float& _trap)
+	// float sdMandelbulb(float3 _p, float _power, float _iterations)
 	{
 		const float sq_threshold = 2.0f; // Divergence threshold
 		const float s = 0.9f;
@@ -112,9 +118,12 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		float d = 1.0f;
         float k = 1.0f;
 
+        _trap = 1e10;
 		for(int i = 0; i < _iterations; i++)
 		{
 			rad = length(zn);
+
+			_trap = min(_trap, dot(zn,zn) / (k*k) );
 
 			if(rad > sq_threshold)
 			{
@@ -140,7 +149,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		return dist;
 	}
 
-	float map(float3 _p)
+	float map(float3 _p, float& _trap)
+	// float map(float3 _p)
 	{
 		float3 p = _p;
 		float d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
@@ -151,9 +161,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		// float d2 = sdBox(p, float3(0.1f) );
 
 		float3 p2 = _p - float3(user[6], user[7], user[8]);
-		// float d1 = sdBox(p2, float3(0.3f, 0.3f, 0.3f) );
-		// float d1 = sdSphere(p2, 0.5f);
-		float d2 = sdMandelbulb(p, user[2], int(user[5]));
+		
+		float d2 = sdMandelbulb(p, user[2], int(user[5]), _trap);
+		// float d2 = sdMandelbulb(p, user[2], int(user[5]));
 		
 		return min(d2, d3);
 	}
@@ -169,7 +179,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float l = rand(float(i)) * _maxDist; // Randomly sized sample
 			float3 rayDir = _n * l;
 
-			ao += (l - map(_p + rayDir)) / pow(1.0f + l, _falloff);
+
+			float tmptrap = 0.0f;
+			ao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);
 		}
 
 		return clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);
@@ -206,7 +218,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float l = rand(float(i)) * _maxDist; // Randomly sized sample
 			float3 rayDir = normalize(_n + randomHemisphereDir(_n,l) * rad) * l;
 
-			ao += (l - map(_p + rayDir)) / pow(1.0f + l, _falloff);
+			float tmptrap = 0.0f;
+			ao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);
 		}
 
 		return clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);
@@ -217,7 +230,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	{
 		for(float t = _mint; t < _maxt; )
 		{
-			float h = map(_ro + _rd*t);
+			float tmptrap = 0.0f;
+			float h = map(_ro + _rd*t, tmptrap);
 			if(h < 0.001)
 			{
 				return 0.0f;
@@ -234,7 +248,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		float result = 1.0f;
 		for(float t = _mint; t < _maxt; )
 		{
-			float h = map(_ro + _rd*t);
+			float tmptrap = 0.0f;
+			float h = map(_ro + _rd*t, tmptrap);
 			if(h < 0.001)
 			{
 				return 0.0f;
@@ -247,14 +262,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		return result;
 	}
 
-
-	float orbit_trap( float3 _p )
-	{
-		const float size = 0.5f;
-
-	}
-
-	float3 shade(float3 _p, float3 _n)
+	float3 shade(float3 _p, float3 _n, float _trap)
 	{
 		float3 radiance = float3(0.0f);
 
@@ -268,7 +276,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
-			radiance += (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
+			float3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);
+			radiance +=  diffuse_colour * (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
 		}
 
 		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
@@ -279,16 +288,18 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	// }
 
+	// Finite difference estimation
 	float3 estimate_normal(float3 _p)
 	{
 		float3 dx = float3(normal_epsilon, 0.0f, 0.0f);
 		float3 dy = float3(0.0f, normal_epsilon, 0.0f);
 		float3 dz = float3(0.0f, 0.0f, normal_epsilon);
 
+		float tmptrap = 0.0f;
 		return normalize(float3(
-				map(_p + dx) - map(_p - dx),
-				map(_p + dy) - map(_p - dy),
-				map(_p + dz) - map(_p - dz)
+				map(_p + dx, tmptrap) - map(_p - dx, tmptrap),
+				map(_p + dy, tmptrap) - map(_p - dy, tmptrap),
+				map(_p + dz, tmptrap) - map(_p - dz, tmptrap)
 			));
 	}
 
@@ -317,14 +328,19 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	    return mix( _colour, fogColor, fogAmount );
 	}
 
-	bool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit)
+	bool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit, float& _trap)
 	{
+		//http://blog.hvidtfeldts.net/index.php/2011/09/distance-estimated-3d-fractals-v-the-mandelbulb-different-de-approximations/
+		const float fudgeFactor = 0.99f;
+		// const float fudgeFactor = 1.0f;
+
 		float dist = 0.0f;
 		
 		for(int i = 0; i < _iterations; ++i)
 		{
 			float3 hit = _p + (dist*_dir);
-			float t = map( hit );
+			float newtrap = 0.0f;
+			float t = map(hit, newtrap);
 
 			if(t < epsilon)
 			{
@@ -334,7 +350,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 				return true;
 			}
 
-			dist += t;
+			dist += t*fudgeFactor;
+
+			_trap = min( _trap, newtrap );
 		}
 
 		// return float3(0.2f, 0.2f, 0.2f);
@@ -348,10 +366,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		float3 colour = float3(0.0f, 0.0f, 0.0f);
 
-		// By the way, I'm not sure about all GPUs, but a lot aren't fond of nesting things inside the loop. Taking the lighting calculations outside the main raymarching loop produces a noticeable (20fps to 60fps) framerate increase on the machine I'm currently on, and, I'd imagine, on a lot of other people's also.
-		// https://www.shadertoy.com/view/MdVSz1
-		float3 ro = camPos;
 		float distance = 9999.0f;
+		float3 ro = camPos;
 		float2 uv = float2(pos.x, pos.y);
 		for(int j=0; j<aa_samples; j++)
 		{
@@ -359,11 +375,13 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 			float3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);
 
-			float3 hit = float3(0.0f);;
-			if( traceWorld(ro, rd, iterations, hit) )
+			float3 hit = float3(0.0f);
+			float trap = 1e20f;
+			if( traceWorld(ro, rd, iterations, hit, trap) )
 			{
+				trap = 1e20f;
 				// More iterations to add more surface detail
-				traceWorld(ro, rd, iterations * 4, hit);
+				traceWorld(ro, rd, iterations * 4, hit, trap);
 				float3 nrm = estimate_normal(hit);
 
 				distance = pow(length(ro - hit), 3);
@@ -371,7 +389,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 				// Back step along the normal
 				// hit -= (0.025f * nrm);
 				hit -= (user2[0] * nrm);
-				colour += shade(hit, nrm);
+				colour += shade(hit, nrm, trap);
 			}
 		}
 		colour /= aa_samples;
