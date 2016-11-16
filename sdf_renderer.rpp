@@ -3,10 +3,8 @@
 #include "sdf_primitives.h"
 
 ///**** TODO ****
+// * Clean up this code, very rough atm
 // * Define camera via rotation angles
-// * Lighting calculations are screwed up, negative colours
-// * Check if space is inverted somehow?
-// * Antialias
 // * Make the scene the foundry logo?
 // * Check the cool posts about magnetic pole stuff I found ages ago
 
@@ -35,6 +33,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	int aa_samples;
 	int occlusion_samples;
+	float fog_b;
+	float3 orbit_trap_colour;
+	float orbit_trap_intensity;
 
 	float epsilon;
 	float normal_epsilon;
@@ -59,6 +60,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
 		defineParam(occlusion_samples, "Occlusion Samples", 6);
+		defineParam(fog_b, "Fog B", 0.5f);
+		defineParam(orbit_trap_colour, "Orbit Trap Colour", float3(0.6f, 0.4f, 0.0f) );
+		defineParam(orbit_trap_intensity, "Orbit Trap Intensity", 1.0f);
 
 		defineParam(epsilon, "Scene Epsilon", 0.01f);
 		defineParam(normal_epsilon, "Normal Epsilon", 0.001f);
@@ -148,10 +152,10 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		float3 p2 = _p - float3(user[6], user[7], user[8]);
 		// float d1 = sdBox(p2, float3(0.3f, 0.3f, 0.3f) );
-		float d1 = sdSphere(p2, 0.5f);
+		// float d1 = sdSphere(p2, 0.5f);
 		float d2 = sdMandelbulb(p, user[2], int(user[5]));
 		
-		return min(min(d1,d2),d3);
+		return min(d2, d3);
 	}
 
 		// Classic AO
@@ -244,6 +248,12 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	}
 
 
+	float orbit_trap( float3 _p )
+	{
+		const float size = 0.5f;
+
+	}
+
 	float3 shade(float3 _p, float3 _n)
 	{
 		float3 radiance = float3(0.0f);
@@ -255,7 +265,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float attenuation = 1.0f / pow(length(light_path), 2);
 			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
 
-			float shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 4.0f);
+			float shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
 			radiance += (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
@@ -299,6 +309,14 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		return rayDir;
 	}
 
+	// http://iquilezles.org/www/articles/fog/fog.htm
+	float3 applyFog(float3 _colour, float _distance)
+	{
+		float fogAmount = 1.0 - exp( -_distance*fog_b );
+	    float3  fogColor  = float3(0.5f ,0.6f,0.7f) * 0.05f;
+	    return mix( _colour, fogColor, fogAmount );
+	}
+
 	bool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit)
 	{
 		float dist = 0.0f;
@@ -333,6 +351,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		// By the way, I'm not sure about all GPUs, but a lot aren't fond of nesting things inside the loop. Taking the lighting calculations outside the main raymarching loop produces a noticeable (20fps to 60fps) framerate increase on the machine I'm currently on, and, I'd imagine, on a lot of other people's also.
 		// https://www.shadertoy.com/view/MdVSz1
 		float3 ro = camPos;
+		float distance = 9999.0f;
 		float2 uv = float2(pos.x, pos.y);
 		for(int j=0; j<aa_samples; j++)
 		{
@@ -346,6 +365,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 				// More iterations to add more surface detail
 				traceWorld(ro, rd, iterations * 4, hit);
 				float3 nrm = estimate_normal(hit);
+
+				distance = pow(length(ro - hit), 3);
 				
 				// Back step along the normal
 				// hit -= (0.025f * nrm);
@@ -354,6 +375,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			}
 		}
 		colour /= aa_samples;
+		// distance /= aa_samples;
+
+		// colour = applyFog(colour, distance);
 
 		dst() = float4(colour.x, colour.y, colour.z, 1.0);
 	}
