@@ -1,5 +1,6 @@
 #include "sdf_functions.h"
 #include "sdf_primitives.h"
+// #include "glsl_functions.h"
 
 ///**** TODO ****
 // * Define camera via rotation angles
@@ -23,6 +24,11 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	float fov;
 	int aa_samples;
 
+	float epsilon;
+	float normal_epsilon;
+
+	float user[9];
+
 	void define()
 	{
 		defineParam(resolution, "Image Resolution", int2(1280, 720) );
@@ -35,6 +41,12 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		defineParam(fov, "Field Of View", 50.0f);
 
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
+
+		defineParam(epsilon, "Scene Epsilon", 0.01f);
+		defineParam(normal_epsilon, "Normal Epsilon", 0.001f);
+
+		// Convenience for scene editing
+		defineParam(user, "User");
 	}
 
 	local:
@@ -44,11 +56,13 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	static const int MAX_LIGHTS = 1;
 	float3 light_position[MAX_LIGHTS];
 	float3 light_colour[MAX_LIGHTS];
+	float light_strength[MAX_LIGHTS];
 	
 	void init()
 	{
-		light_position[0]   = float3(5.0f, 8.0f, 0.0f);
-		light_colour[0] 	= float3(0.5f, 0.4f, 0.0f);
+		light_position[0]   = float3(3.0f, -8.0f, -1.0f);
+		light_colour[0] 	= float3(1.0f, 0.4f, 0.0f);
+		light_strength[0]	= 180.0f;
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -59,21 +73,41 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	float intersectScene(float3 _p)
 	{
-		float d1 = sdBox(_p, float3(1.0f, 1.0f, 1.0f) );
+		float3 p = _p;
+		// p = repeatXYZ(p, float3(user[0], user[0], user[0]) );
+		// float d1 = sdBox(p, float3(0.1f, 0.1f, 0.1f) );
+		float d1 = sdSphere(p, 0.1f);
+		float d2 = sdPlane(_p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
 
-		return d1;
+		return min(d1,d2);
 	}
 
 	float3 shade(float3 _p, float3 _n)
 	{
-		float3 light_dir = normalize( _p - light_position[0] );
+		// Back step the normal
+		_p = _p + (-0.01f * _n);
 
-		return dot(light_dir, _n);
+		float3 radiance = float3(0.0f, 0.0f, 0.0f);
+
+		for(int i = 0; i < MAX_LIGHTS; i++)
+		{
+			float3 light_path = _p - light_position[0];
+			float3 light_dir = normalize(light_path);
+			float attenuation = 1.0f / pow(length(light_path), 2);
+
+			radiance += dot(light_dir, _n) * light_colour[0] * light_strength[0] * attenuation;
+		}
+
+		return radiance;
 	}
+
+	// float estimate_occlusion(float3 _p, float3 _n)
+	// {
+
+	// }
 
 	float3 estimate_normal(float3 _p)
 	{
-		float normal_epsilon = 0.001f;
 		float3 dx = float3(normal_epsilon, 0.0f, 0.0f);
 		float3 dy = float3(0.0f, normal_epsilon, 0.0f);
 		float3 dz = float3(0.0f, 0.0f, normal_epsilon);
@@ -111,7 +145,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float3 hit = _p + (dist*_dir);
 			float t = intersectScene( hit );
 
-			if(t < 0.001f)
+			if(t < epsilon)
 			{
 				float3 nrm = estimate_normal(hit);
 				return shade(hit, nrm);
@@ -120,7 +154,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			dist += t;
 		}
 
-		return float3(0.0f, 0.0f, 0.0f);
+		return float3(0.2f, 0.2f, 0.2f);
 	}
 
 	void process(int2 pos)
