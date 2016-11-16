@@ -1,6 +1,6 @@
+#include "glsl_functions.h"
 #include "sdf_functions.h"
 #include "sdf_primitives.h"
-// #include "glsl_functions.h"
 
 ///**** TODO ****
 // * Define camera via rotation angles
@@ -22,7 +22,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	float3 camDir;
 	float3 camUp;
 	float fov;
+
 	int aa_samples;
+	int occlusion_samples;
 
 	float epsilon;
 	float normal_epsilon;
@@ -34,13 +36,14 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		defineParam(resolution, "Image Resolution", int2(1280, 720) );
 		defineParam(iterations, "Max Iterations", 100);
 
-		defineParam(camPos, "Camera Position", float3(0.0f, 0.0f, 10.0f) );
-		defineParam(camDir, "Camera Direction", float3(0.0f, 0.0f, -1.0f) );
+		defineParam(camPos, "Camera Position", float3(0.0f, 0.05f, 0.2f) );
+		defineParam(camDir, "Camera Direction", float3(1.0f, 0.0f, 0.0f) );
 		defineParam(camUp, "Camera Up", float3(0.0f, 1.0f, 0.0f) );
 
 		defineParam(fov, "Field Of View", 50.0f);
 
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
+		defineParam(occlusion_samples, "Occlusion Samples", 6);
 
 		defineParam(epsilon, "Scene Epsilon", 0.01f);
 		defineParam(normal_epsilon, "Normal Epsilon", 0.001f);
@@ -53,7 +56,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	// Careful, these constants don't seem to be properly initialised
 	const float MAX_DIST = 9999999.9f;
 	
-	static const int MAX_LIGHTS = 1;
+	static const int MAX_LIGHTS = 2;
 	float3 light_position[MAX_LIGHTS];
 	float3 light_colour[MAX_LIGHTS];
 	float light_strength[MAX_LIGHTS];
@@ -61,8 +64,12 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	void init()
 	{
 		light_position[0]   = float3(3.0f, -8.0f, -1.0f);
-		light_colour[0] 	= float3(1.0f, 0.4f, 0.0f);
+		light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
 		light_strength[0]	= 180.0f;
+
+		light_position[1]   = float3(-3.0f, 3.0f, -4.0f);
+		light_colour[1] 	= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);
+		light_strength[1]	= 40.0f;
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -71,16 +78,151 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
  	   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);
 	}
 
-	float intersectScene(float3 _p)
+	float sdMandelbulb(float3 _p, float _power, float _iterations)
+	{
+		float3 zn = _p;
+		const float sq_threshold = 2.0f; // Divergence threshold
+
+		float rad = 0.0f;
+		float dist = 0.0f;
+		float d = 1.0f;
+
+		const float s = 0.9f;
+        float k = 1.0f;
+
+		int i = _iterations;
+		while(i--)
+		{
+			rad = length(zn);
+
+			if(rad > sq_threshold)
+			{
+				dist = 0.5f * rad * float(log(rad))/d;
+			}
+			else
+			{
+				float th = atan2( length( float3(zn.x, zn.y, 0.0f) ), zn.z);
+				float phi = atan2( zn.y, zn.x );
+				float rado = pow(rad, _power);
+				
+				d = pow(rad, _power - 1) * (_power-1) * d + 1.0f;
+
+				float sint = sin(th * _power);
+				zn.x = rado * sint * cos(phi * _power);
+				zn.y = rado * sint * sin(phi * _power);
+				zn.z = rado * cos(th * _power);
+				zn += _power;
+			}
+
+			k *= s;
+		}
+
+		return dist;
+	}
+
+	float map(float3 _p)
 	{
 		float3 p = _p;
+		float d1 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
+		
+		p = p - float3(0.0f, user[1], 0.0f);
 		// p = repeatXYZ(p, float3(user[0], user[0], user[0]) );
-		// float d1 = sdBox(p, float3(0.1f, 0.1f, 0.1f) );
-		float d1 = sdSphere(p, 0.1f);
-		float d2 = sdPlane(_p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
-
-		return min(d1,d2);
+		// float d2 = sdSphere(p, 0.1f);
+		// float d2 = sdBox(p, float3(0.1f) );
+		float d2 = sdMandelbulb(p, 8.0f, 16);
+		
+		return d2;//min(d1,d2);
 	}
+
+		// Classic AO
+	// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO
+	float classicOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)
+	{
+		float ao = 0.0f;
+
+		for(int i = 0; i < occlusion_samples; i++)
+		{
+			float l = rand(float(i)) * _maxDist; // Randomly sized sample
+			float3 rayDir = _n * l;
+
+			ao += (l - map(_p + rayDir)) / pow(1.0f + l, _falloff);
+		}
+
+		return clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);
+	}
+
+	// http://psgraphics.blogspot.co.uk/2014/11/making-orthonormal-basis-from-unit.html
+	// float3 createFrisvadONB(float3 _dir, float _i)
+	// {
+	// 	if( )
+	// }
+
+	// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO
+	float3 randomSphereDir(float2 _rnd)
+	{
+		float s = _rnd.x * PI * 2.0f;
+		float t = _rnd.y * 2.0 - 1.0f;
+		return float3( sin(s), cos(s), t) / sqrt(1.0f + t * t);
+	}
+
+	float3 randomHemisphereDir(float3 _dir, float _i)
+	{
+		float3 v = randomSphereDir( float2(rand(_i+1.0f), rand(_i + 2.0f)) );
+		return v * sign(dot(v, _dir));
+	}
+
+	float hemisphericalOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)
+	{
+		float ao = 0.0f;
+		const float inverseOcclusionSamples = 1.0f / float(occlusion_samples);
+		const float rad = 1.0f * -1.0f * inverseOcclusionSamples;
+
+		for(int i = 0; i < occlusion_samples; i++)
+		{
+			float l = rand(float(i)) * _maxDist; // Randomly sized sample
+			float3 rayDir = normalize(_n + randomHemisphereDir(_n,l) * rad) * l;
+
+			ao += (l - map(_p + rayDir)) / pow(1.0f + l, _falloff);
+		}
+
+		return clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);
+	}
+
+	// http://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm
+	float shadow(float3 _ro, float3 _rd, float _mint, float _maxt)
+	{
+		for(float t = _mint; t < _maxt; )
+		{
+			float h = map(_ro + _rd*t);
+			if(h < 0.001)
+			{
+				return 0.0f;
+			}
+
+			t += h;
+		}
+
+		return 1.0f;
+	}
+
+	float softshadow(float3 _ro, float3 _rd, float _mint, float _maxt, float _k)
+	{
+		float result = 1.0f;
+		for(float t = _mint; t < _maxt; )
+		{
+			float h = map(_ro + _rd*t);
+			if(h < 0.001)
+			{
+				return 0.0f;
+			}
+
+			result = min(result, _k*h/t);
+			t += h;
+		}
+
+		return result;
+	}
+
 
 	float3 shade(float3 _p, float3 _n)
 	{
@@ -91,14 +233,18 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		for(int i = 0; i < MAX_LIGHTS; i++)
 		{
-			float3 light_path = _p - light_position[0];
+			float3 light_path = _p - light_position[i];
 			float3 light_dir = normalize(light_path);
 			float attenuation = 1.0f / pow(length(light_path), 2);
+			float diffuse = dot(normalize(_n), light_dir);
 
-			radiance += dot(light_dir, _n) * light_colour[0] * light_strength[0] * attenuation;
+			float shadowed = softshadow(light_path, light_dir, user[6], user[7], user[8]);
+			shadowed = clamp(shadowed, 0.025f, 1.0f);
+
+			radiance += (diffuse * light_colour[i] * light_strength[i] * attenuation) * shadowed;
 		}
 
-		return radiance;
+		return radiance;// * hemisphericalOcclusion(_p, _n, user[3], user[4]);
 	}
 
 	// float estimate_occlusion(float3 _p, float3 _n)
@@ -113,9 +259,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		float3 dz = float3(0.0f, 0.0f, normal_epsilon);
 
 		return normalize(float3(
-				intersectScene(_p + dx) - intersectScene(_p - dx),
-				intersectScene(_p + dy) - intersectScene(_p - dy),
-				intersectScene(_p + dz) - intersectScene(_p - dz)
+				map(_p + dx) - map(_p - dx),
+				map(_p + dy) - map(_p - dy),
+				map(_p + dz) - map(_p - dz)
 			));
 	}
 
@@ -143,7 +289,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		for(int i = 0; i < iterations; ++i)
 		{
 			float3 hit = _p + (dist*_dir);
-			float t = intersectScene( hit );
+			float t = map( hit );
 
 			if(t < epsilon)
 			{
@@ -161,6 +307,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	{
 		float3 colour = float3(0.0f, 0.0f, 0.0f);
 
+		// By the way, I'm not sure about all GPUs, but a lot aren't fond of nesting things inside the loop. Taking the lighting calculations outside the main raymarching loop produces a noticeable (20fps to 60fps) framerate increase on the machine I'm currently on, and, I'd imagine, on a lot of other people's also.
+		// https://www.shadertoy.com/view/MdVSz1
 		float3 ro = camPos;
 		float2 uv = float2(pos.x, pos.y);
 		for(int j=0; j<aa_samples; j++)
