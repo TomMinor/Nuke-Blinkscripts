@@ -15,6 +15,15 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	// No input data needed
 	Image<eWrite, eAccessPoint, eEdgeNone> dst;
 
+	local:
+	// Careful, these constants don't seem to be properly initialised
+	const float MAX_DIST = 9999999.9f;
+	
+	static const int MAX_LIGHTS = 2;
+	float3 m_light_position[MAX_LIGHTS];
+	float3 m_light_colour[MAX_LIGHTS];
+	float m_light_strength[MAX_LIGHTS];
+
 	param:
 	int2 resolution;
 	int iterations;
@@ -32,6 +41,10 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	float user[9];
 	float user2[9];
+
+	float3 lightPositions[MAX_LIGHTS];
+	float3 lightColours[MAX_LIGHTS];
+	float  lightIntensities[MAX_LIGHTS];
 
 	void define()
 	{
@@ -53,31 +66,29 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		// Convenience for scene editing
 		defineParam(user, "User");
 		defineParam(user2, "User2");
-	}
 
-	local:
-	// Careful, these constants don't seem to be properly initialised
-	const float MAX_DIST = 9999999.9f;
-	
-	static const int MAX_LIGHTS = 2;
-	float3 light_position[MAX_LIGHTS];
-	float3 light_colour[MAX_LIGHTS];
-	float light_strength[MAX_LIGHTS];
+		// defineParam(lightPositions, "Light Positions");
+		// defineParam(lightColours, "Light Colours");
+		// defineParam(lightIntensities, "Light Intensities");
+	}
 	
 	void init()
 	{
-		// light_position[0]   = float3(3.0f, -8.0f, -1.0f);
-		light_position[0]   = float3(3.0f, 8.0f, -2.0f);
-		light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
-		light_strength[0]	= 180.0f;
+		// m_light_position[0]   = float3(3.0f, 8.0f, -2.0f);
 
-		light_position[1]   = float3(-3.0f, 3.0f, -2.0f);
-		light_colour[1] 	= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);
-		light_strength[1]	= 40.0f;
+		// m_light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
+		// m_light_strength[0]	= 180.0f;
 
-		// light_position[0]   = float3(0.0f, 8.0f, 0.0f);
-		// light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
-		// light_strength[0]	= 300.0f;
+		// m_light_position[1]   = float3(-3.0f, 3.0f, -2.0f);
+		// m_light_colour[1] 	= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);
+		// m_light_strength[1]	= 40.0f;
+
+		for(int i = 0; i < MAX_LIGHTS; i++)
+		{
+			m_light_position[i] = lightPositions[i];
+			m_light_colour[i] 	= lightColours[i];
+			m_light_strength[i] = lightIntensities[i];
+		}
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -242,7 +253,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		for(int i = 0; i < MAX_LIGHTS; i++)
 		{
-			float3 light_path = _p - light_position[i];
+			float3 light_path = _p - m_light_position[i];
 			float3 light_dir = normalize(light_path);
 			float attenuation = 1.0f / pow(length(light_path), 2);
 			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
@@ -250,7 +261,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float shadowed = softshadow(_p, -light_dir, 0.1f, 100.0f, 8.14f);
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
-			radiance += (halflambert * light_colour[i] * light_strength[i] * attenuation) * shadowed;
+			radiance += (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
 		}
 
 		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
@@ -314,6 +325,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	void process(int2 pos)
 	{
+
 		float4x4 MVP = float4x4_identity;
 
 		float3 colour = float3(0.0f, 0.0f, 0.0f);
