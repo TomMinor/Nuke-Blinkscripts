@@ -5,7 +5,6 @@
 ///**** TODO ****
 // * Clean up this code, very rough atm
 //		+ The trap value 'bubbles' up through a bunch of functions, crap design
-//		+ Clean up the UI, remove the user/user2 params and link up stuff explicitly
 // * Define camera via rotation angles
 // * Make the scene the foundry logo?
 // * Check the cool posts about magnetic pole stuff I found ages ago
@@ -25,23 +24,33 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	
 	float3 camPos;
 	float3 camDir;
-	// float3 camUp;
 	float fov;
 
 	int aa_samples;
+
+	bool occlusion_enabled;
+	float occlusion_maxdist;
+	float occlusion_falloff;
 	int occlusion_samples;
+
+	float shadowmint;
+	float shadowwmaxt;
+	float shadowfalloff;
+	bool shadow_enabled;
+
 	float fog_b;
+	int  fog_exponent_scale;
+	bool enable_fog;
+
+	float mandelbulb_power;
+	int mandelbulb_search_iterations;
 	
 	float3 trap_colour_a;
 	float3 trap_colour_b;
 	float orbit_trap_intensity;
-	float3 orbit_trap_offset;
 
 	float epsilon;
 	float normal_epsilon;
-
-	float user[9];
-	float user2[9];
 
 	float3 lightPositions[MAX_LIGHTS];
 	float3 lightColours[MAX_LIGHTS];
@@ -49,36 +58,66 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 	void define()
 	{
+		// @todo Ideally this should be linked up to format
 		defineParam(resolution, "Image Resolution", int2(1280, 720) );
-		defineParam(iterations, "Max Iterations", 100);
 
+		// ----------- Accuracy ---------------		
+		defineParam(iterations, "Max Iterations", 100);
+		
+
+		// ---------- Features -----------
+		defineParam(occlusion_enabled, "Enable Occlusion", true);
+		defineParam(shadow_enabled, "Enable Shadows", true);
+		defineParam(enable_fog, "Enable Fog", false);
+
+		// ----------- Camera ---------------		
 		defineParam(camPos, "Camera Position", 	float3(0.0f, 1.0f, 2.0f) );
 		defineParam(camDir, "Camera Angles", float3(-26.0f, 0.0f, 180.0f) );
 		defineParam(fov, "Field Of View", 50.0f);
 
+		// ----------- Sampling ---------------
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
+		
+		// ---------- Occlusion -------------		
 		defineParam(occlusion_samples, "Occlusion Samples", 6);
-		defineParam(fog_b, "Fog B", 0.5f);
-		defineParam(trap_colour_a, "Orbit Trap Colour A", float3(0.6f, 0.4f, 0.0f) );
-		defineParam(trap_colour_b, "Orbit Trap Colour B", float3(0.3f, 0.2f, 0.8f) );
-		defineParam(orbit_trap_intensity, "Orbit Trap Intensity", 1.0f);
-		defineParam(orbit_trap_offset, "Orbit Trap Offset", float3(0.0f));
+		defineParam(occlusion_maxdist, "Occlusion Max Distance", 1.75f);
+		defineParam(occlusion_falloff, "Occlusion Falloff", 0.08f);
 
-		defineParam(epsilon, "Scene Epsilon", 0.01f);
+		// ---------- Shadows -------------
+		defineParam(shadowmint, "Shadow Min Distance", 	0.1f);
+		defineParam(shadowwmaxt, "Shadow Max Distance", 2.0f);
+		defineParam(shadowfalloff, "Shadow Falloff", 	7.0f);
+
+		// ----------- Fog ---------------
+		defineParam(fog_b, "Fog B", 0.0025f);
+		defineParam(fog_exponent_scale, "Fog Exponent", 3);
+
+
+		// ---------- Mandelbulb --------------
+		defineParam(mandelbulb_power, "Mandelbulb Power", 8.0f);	//3.0 + fabs((sin(frame * [knob "animspeed"])) * 5.0)
+		defineParam(mandelbulb_search_iterations, "Mandelbulb Iterations", 32);
+		defineParam(trap_colour_a, "Orbit Trap Colour A", float3(-0.21f, 	-0.13f, 	0.29f) );
+		defineParam(trap_colour_b, "Orbit Trap Colour B", float3(1.0f,		1.13f,		1.0f) );
+		defineParam(orbit_trap_intensity, "Orbit Trap Intensity", 1.4f);
+
+		// ----------- Accuracy ---------------
+		defineParam(epsilon, "Scene Epsilon", 0.001f);
 		defineParam(normal_epsilon, "Normal Epsilon", 0.001f);
 
-		// Convenience for scene editing
-		defineParam(user, "User");
-		defineParam(user2, "User2");
-
-		// defineParam(lightPositions, "Light Positions");
-		// defineParam(lightColours, "Light Colours");
-		// defineParam(lightIntensities, "Light Intensities");
+		defineParam(lightPositions, "Light Positions");
+		defineParam(lightColours, "Light Colours");
+		defineParam(lightIntensities, "Light Intensities");
 	}
 	
 	void init()
 	{
+		// lightPositions[0] = float3( -0.5f, 3.0f, 4.0f );
+		// lightColours[0]	  = float3( 0.9f, 0.9f, 0.98f );
+		// lightIntensities[0]	= 30.0f;
 
+		// lightPositions[1] = float3( 0.0, -0.4, 0.92 );
+		// lightColours[1]	  = float3( 0.0f, 1.0f, 0.5f );
+		// lightIntensities[0]	= 5.0f;
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -136,35 +175,10 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		float d1 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
 		
 		p = p - float3(0.0f, 1.1f, 0.0f);
-		float d2 = sdMandelbulb(p, user[2], int(user[5]), _trap);
+		float d2 = sdMandelbulb(p, mandelbulb_power, mandelbulb_search_iterations, _trap);
 		
 		return min(d2, d1);
 	}
-
-		// Classic AO
-	// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO
-	float classicOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)
-	{
-		float ao = 0.0f;
-
-		for(int i = 0; i < occlusion_samples; i++)
-		{
-			float l = rand(float(i)) * _maxDist; // Randomly sized sample
-			float3 rayDir = _n * l;
-
-
-			float tmptrap = 0.0f;
-			ao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);
-		}
-
-		return clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);
-	}
-
-	// http://psgraphics.blogspot.co.uk/2014/11/making-orthonormal-basis-from-unit.html
-	// float3 createFrisvadONB(float3 _dir, float _i)
-	// {
-	// 	if( )
-	// }
 
 	// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO
 	float3 randomSphereDir(float2 _rnd)
@@ -227,22 +241,17 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float3 light_path = _p - lightPositions[i];
 			float3 light_dir = normalize(light_path);
 			float attenuation = 1.0f / pow(length(light_path), 2);
-			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
+			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little (https://developer.valvesoftware.com/wiki/Half_Lambert)
 
-			float shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);
-			shadowed = clamp(shadowed, 0.025f, 1.0f);
+			float shadowed = shadow_enabled ? softshadow(_p, -light_dir, shadowmint, shadowwmaxt, shadowfalloff) : 1.0f;
+			shadowed = clamp(shadowed, 0.025f, 1.0f); // Prevent a very dark shadow, you could just add an ambient term to the lighting calculations instead
 
 			float3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);
 			radiance +=  diffuse_colour * (halflambert * lightColours[i] * lightIntensities[i] * attenuation) * shadowed;
 		}
 
-		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
+		return radiance * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f);
 	}
-
-	// float estimate_occlusion(float3 _p, float3 _n)
-	// {
-
-	// }
 
 	// Finite difference estimation
 	float3 estimate_normal(float3 _p)
@@ -258,23 +267,6 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 				map(_p + dz, tmptrap) - map(_p - dz, tmptrap)
 			));
 	}
-
-	// float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)
-	// {
-	// 	_camDir = normalize(_camDir);
-	// 	float3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);
-	// 	float3 forward = cross(_camUp, right );
-
-	// 	float aspect = float(resolution.x) / float(resolution.y);
-	// 	float u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);
-	// 	float v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);
-	// 	float fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));
-
-	// 	float3 rayOrigin = _camPos;
-	// 	float3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );
-
-	// 	return rayDir;
-	// } 
 
 	float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float _fov)
 	{
@@ -366,23 +358,23 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			float trap = 1e20f;
 			if( traceWorld(ro, rd, iterations, hit, trap) )
 			{
-				trap = 1e20f;
+				// trap = 1e20f;
 				// More iterations to add more surface detail
-				traceWorld(ro, rd, iterations * 4, hit, trap);
+				// traceWorld(ro, rd, iterations * 4, hit, trap);
 				float3 nrm = estimate_normal(hit);
-
-				distance = pow(length(ro - hit), 3);
+				distance = pow(length(ro - hit), fog_exponent_scale);
 				
 				// Back step along the normal
-				// hit -= (0.025f * nrm);
-				hit -= (user2[0] * nrm);
+				hit -= (0.045f * nrm);
 				colour += shade(hit, nrm, trap);
 			}
 		}
 		colour /= aa_samples;
-		// distance /= aa_samples;
 
-		// colour = applyFog(colour, distance);
+		if(enable_fog)
+		{			
+			colour = applyFog(colour, distance);
+		}
 
 		dst() = float4(colour.x, colour.y, colour.z, 1.0);
 	}
