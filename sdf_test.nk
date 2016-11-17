@@ -4,7 +4,7 @@ define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
 <layout version="1.0">
     <window x="-2" y="25" w="1924" h="1034" maximized="1" screen="0">
         <splitter orientation="1">
-            <split size="632"/>
+            <split size="899"/>
             <splitter orientation="2">
                 <split size="323"/>
                 <dock id="" activePageId="Error Console.1">
@@ -16,14 +16,14 @@ define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
                     <page id="Properties.1"/>
                 </dock>
             </splitter>
-            <split size="1284"/>
+            <split size="1017"/>
             <splitter orientation="2">
-                <split size="792"/>
-                <dock id="" activePageId="Viewer.1" focus="true">
+                <split size="582"/>
+                <dock id="" activePageId="Viewer.1">
                     <page id="Viewer.1"/>
                 </dock>
-                <split size="184"/>
-                <dock id="" hideTitles="1" activePageId="DAG.1">
+                <split size="394"/>
+                <dock id="" hideTitles="1" activePageId="DAG.1" focus="true">
                     <page id="DAG.1"/>
                 </dock>
             </splitter>
@@ -34,71 +34,13 @@ define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
 Root {
  inputs 0
  name /mnt/netdev/tom.minor/dev/blinktracer/sdf_test.nk
- frame 327
+ frame 75
  last_frame 628
  fps 25
  format "1280 720 0 0 1280 720 1 HD_720"
  proxy_type scale
  proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
  colorManagement Nuke
-}
-BlinkScript {
- inputs 0
- kernelSourceFile /mnt/netdev/tom.minor/dev/blinktracer/sdf_renderer.rpp
- recompileCount 531
- ProgramGroup 1
- KernelDescription "2 \"TestKernel\" iterate pixelWise d6675068c82de0de04bd9be6bfbb87eab2a0e308c0d14ba0c6cb782b04c4eec3 1 \"dst\" Write Point 20 \"Image Resolution\" Int 2 AAUAANACAAA= \"Max Iterations\" Int 1 ZAAAAA== \"Camera Position\" Float 3 AAAAAM3MTD3NzEw+AAAAAA== \"Camera Direction\" Float 3 AACAPwAAAAAAAAAAAAAAAA== \"Camera Up\" Float 3 AAAAAAAAgD8AAAAAAAAAAA== \"Field Of View\" Float 1 AABIQg== \"AntiAliasing Samples\" Int 1 BAAAAA== \"Occlusion Samples\" Int 1 BgAAAA== \"Fog B\" Float 1 AAAAPw== \"Orbit Trap Colour A\" Float 3 mpkZP83MzD4AAAAAAAAAAA== \"Orbit Trap Colour B\" Float 3 mpmZPs3MTD7NzEw/AAAAAA== \"Orbit Trap Intensity\" Float 1 AACAPw== \"Orbit Trap Offset\" Float 3 AAAAAAAAAAAAAAAAAAAAAA== \"Scene Epsilon\" Float 1 CtcjPA== \"Normal Epsilon\" Float 1 bxKDOg== \"User\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"User2\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"lightPositions\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightColours\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightIntensities\" Float 2 AAAAAAAAAAA= 20 \"resolution\" 2 1 \"iterations\" 1 1 \"camPos\" 3 1 \"camDir\" 3 1 \"camUp\" 3 1 \"fov\" 1 1 \"aa_samples\" 1 1 \"occlusion_samples\" 1 1 \"fog_b\" 1 1 \"trap_colour_a\" 3 1 \"trap_colour_b\" 3 1 \"orbit_trap_intensity\" 1 1 \"orbit_trap_offset\" 3 1 \"epsilon\" 1 1 \"normal_epsilon\" 1 1 \"user\" 1 9 \"user2\" 1 9 \"lightPositions\" 3 2 \"lightColours\" 3 2 \"lightIntensities\" 1 2 4 \"MAX_DIST\" Float 1 1 AAAAAA== \"m_light_position\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_colour\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_strength\" Float 1 2 AAAAAAAAAAA="
- kernelSource "#include \"glsl_functions.h\"\n#include \"sdf_functions.h\"\n#include \"sdf_primitives.h\"\n\n///**** TODO ****\n// * Clean up this code, very rough atm\n// * Define camera via rotation angles\n// * Make the scene the foundry logo?\n// * Check the cool posts about magnetic pole stuff I found ages ago\n\nkernel TestKernel : ImageComputationKernel<ePixelWise>\n\{\n\t// No input data needed\n\tImage<eWrite, eAccessPoint, eEdgeNone> dst;\n\n\tlocal:\n\t// Careful, these constants don't seem to be properly initialised\n\tconst float MAX_DIST = 9999999.9f;\n\t\n\tstatic const int MAX_LIGHTS = 2;\n\tfloat3 m_light_position\[MAX_LIGHTS];\n\tfloat3 m_light_colour\[MAX_LIGHTS];\n\tfloat m_light_strength\[MAX_LIGHTS];\n\n\tparam:\n\tint2 resolution;\n\tint iterations;\n\t\n\tfloat3 camPos;\n\tfloat3 camDir;\n\tfloat3 camUp;\n\tfloat fov;\n\n\tint aa_samples;\n\tint occlusion_samples;\n\tfloat fog_b;\n\t\n\tfloat3 trap_colour_a;\n\tfloat3 trap_colour_b;\n\tfloat orbit_trap_intensity;\n\tfloat3 orbit_trap_offset;\n\n\tfloat epsilon;\n\tfloat normal_epsilon;\n\n\tfloat user\[9];\n\tfloat user2\[9];\n\n\tfloat3 lightPositions\[MAX_LIGHTS];\n\tfloat3 lightColours\[MAX_LIGHTS];\n\tfloat  lightIntensities\[MAX_LIGHTS];\n\n\tvoid define()\n\t\{\n\t\tdefineParam(resolution, \"Image Resolution\", int2(1280, 720) );\n\t\tdefineParam(iterations, \"Max Iterations\", 100);\n\n\t\tdefineParam(camPos, \"Camera Position\", float3(0.0f, 0.05f, 0.2f) );\n\t\tdefineParam(camDir, \"Camera Direction\", float3(1.0f, 0.0f, 0.0f) );\n\t\tdefineParam(camUp, \"Camera Up\", float3(0.0f, 1.0f, 0.0f) );\n\n\t\tdefineParam(fov, \"Field Of View\", 50.0f);\n\n\t\tdefineParam(aa_samples, \"AntiAliasing Samples\", 4);\n\t\tdefineParam(occlusion_samples, \"Occlusion Samples\", 6);\n\t\tdefineParam(fog_b, \"Fog B\", 0.5f);\n\t\tdefineParam(trap_colour_a, \"Orbit Trap Colour A\", float3(0.6f, 0.4f, 0.0f) );\n\t\tdefineParam(trap_colour_b, \"Orbit Trap Colour B\", float3(0.3f, 0.2f, 0.8f) );\n\t\tdefineParam(orbit_trap_intensity, \"Orbit Trap Intensity\", 1.0f);\n\t\tdefineParam(orbit_trap_offset, \"Orbit Trap Offset\", float3(0.0f));\n\n\t\tdefineParam(epsilon, \"Scene Epsilon\", 0.01f);\n\t\tdefineParam(normal_epsilon, \"Normal Epsilon\", 0.001f);\n\n\t\t// Convenience for scene editing\n\t\tdefineParam(user, \"User\");\n\t\tdefineParam(user2, \"User2\");\n\n\t\t// defineParam(lightPositions, \"Light Positions\");\n\t\t// defineParam(lightColours, \"Light Colours\");\n\t\t// defineParam(lightIntensities, \"Light Intensities\");\n\t\}\n\t\n\tvoid init()\n\t\{\n\t\t// m_light_position\[0]   = float3(3.0f, 8.0f, -2.0f);\n\n\t\t// m_light_colour\[0] \t= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);\n\t\t// m_light_strength\[0]\t= 180.0f;\n\n\t\t// m_light_position\[1]   = float3(-3.0f, 3.0f, -2.0f);\n\t\t// m_light_colour\[1] \t= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);\n\t\t// m_light_strength\[1]\t= 40.0f;\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tm_light_position\[i] = lightPositions\[i];\n\t\t\tm_light_colour\[i] \t= lightColours\[i];\n\t\t\tm_light_strength\[i] = lightIntensities\[i];\n\t\t\}\n\t\}\n\n\t// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl\n\tfloat rand(float2 _co)\n\t\{\n \t   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);\n\t\}\n\n\tfloat sdMandelbulb(float3 _p, float _power, float _iterations, float& _trap)\n\t// float sdMandelbulb(float3 _p, float _power, float _iterations)\n\t\{\n\t\tconst float sq_threshold = 2.0f; // Divergence threshold\n\t\tconst float s = 0.9f;\n\n\t\tfloat3 zn = _p;\n\t\tfloat rad = 0.0f;\n\t\tfloat dist = 0.0f;\n\t\tfloat d = 1.0f;\n        float k = 1.0f;\n\n        _trap = 1e10;\n\t\tfor(int i = 0; i < _iterations; i++)\n\t\t\{\n\t\t\trad = length(zn);\n\n\t\t\t_trap = min(_trap, dot(zn,zn) / (k*k) );\n\n\t\t\tif(rad > sq_threshold)\n\t\t\t\{\n\t\t\t\tdist = 0.5f * rad * log(rad)/float(d);\n\t\t\t\}\n\t\t\telse\n\t\t\t\{\n\t\t\t\tfloat th = atan2( length( float3(zn.x, zn.y, 0.0f) ), zn.z);\n\t\t\t\tfloat phi = atan2( zn.y, zn.x );\n\t\t\t\tfloat rado = pow(rad, _power);\n\t\t\t\td = pow(rad, _power - 1.0f) * (_power - 1.0f) * d + 1.0f;\n\n\t\t\t\tfloat sint = sin(th * _power);\n\t\t\t\tzn.x = rado * sint * cos(phi * _power);\n\t\t\t\tzn.y = rado * sint * sin(phi * _power);\n\t\t\t\tzn.z = rado * cos(th * _power);\n\t\t\t\tzn += _p;\n\t\t\t\}\n\n\t\t\tk *= s;\n\t\t\}\n\n\t\treturn dist;\n\t\}\n\n\tfloat map(float3 _p, float& _trap)\n\t// float map(float3 _p)\n\t\{\n\t\tfloat3 p = _p;\n\t\tfloat d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );\n\t\t\n\t\tp = p - float3(0.0f, user\[1], 0.0f);\n\t\t// p = repeatXYZ(p, float3(user\[0], user\[0], user\[0]) );\n\t\t// float d2 = sdSphere(p, 0.1f);\n\t\t// float d2 = sdBox(p, float3(0.1f) );\n\n\t\tfloat3 p2 = _p - float3(user\[6], user\[7], user\[8]);\n\t\t\n\t\tfloat d2 = sdMandelbulb(p, user\[2], int(user\[5]), _trap);\n\t\t// float d2 = sdMandelbulb(p, user\[2], int(user\[5]));\n\t\t\n\t\treturn min(d2, d3);\n\t\}\n\n\t\t// Classic AO\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat classicOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = _n * l;\n\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://psgraphics.blogspot.co.uk/2014/11/making-orthonormal-basis-from-unit.html\n\t// float3 createFrisvadONB(float3 _dir, float _i)\n\t// \{\n\t// \tif( )\n\t// \}\n\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat3 randomSphereDir(float2 _rnd)\n\t\{\n\t\tfloat s = _rnd.x * PI * 2.0f;\n\t\tfloat t = _rnd.y * 2.0 - 1.0f;\n\t\treturn float3( sin(s), cos(s), t) / sqrt(1.0f + t * t);\n\t\}\n\n\tfloat3 randomHemisphereDir(float3 _dir, float _i)\n\t\{\n\t\tfloat3 v = randomSphereDir( float2(rand(_i+1.0f), rand(_i + 2.0f)) );\n\t\treturn v * sign(dot(v, _dir));\n\t\}\n\n\tfloat hemisphericalOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\t\tconst float inverseOcclusionSamples = 1.0f / float(occlusion_samples);\n\t\tconst float rad = 1.0f * -1.0f * inverseOcclusionSamples;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = normalize(_n + randomHemisphereDir(_n,l) * rad) * l;\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm\n\tfloat shadow(float3 _ro, float3 _rd, float _mint, float _maxt)\n\t\{\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn 1.0f;\n\t\}\n\n\tfloat softshadow(float3 _ro, float3 _rd, float _mint, float _maxt, float _k)\n\t\{\n\t\tfloat result = 1.0f;\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tresult = min(result, _k*h/t);\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn result;\n\t\}\n\n\tfloat3 shade(float3 _p, float3 _n, float _trap)\n\t\{\n\t\tfloat3 radiance = float3(0.0f);\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tfloat3 light_path = _p - m_light_position\[i];\n\t\t\tfloat3 light_dir = normalize(light_path);\n\t\t\tfloat attenuation = 1.0f / pow(length(light_path), 2);\n\t\t\tfloat halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little\n\n\t\t\tfloat shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);\n\t\t\tshadowed = clamp(shadowed, 0.025f, 1.0f);\n\n\t\t\tfloat3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);\n\t\t\tradiance +=  diffuse_colour * (halflambert * m_light_colour\[i] * m_light_strength\[i] * attenuation) * shadowed;\n\t\t\}\n\n\t\treturn radiance * hemisphericalOcclusion(_p, _n, user\[3], user\[4]);\n\t\}\n\n\t// float estimate_occlusion(float3 _p, float3 _n)\n\t// \{\n\n\t// \}\n\n\t// Finite difference estimation\n\tfloat3 estimate_normal(float3 _p)\n\t\{\n\t\tfloat3 dx = float3(normal_epsilon, 0.0f, 0.0f);\n\t\tfloat3 dy = float3(0.0f, normal_epsilon, 0.0f);\n\t\tfloat3 dz = float3(0.0f, 0.0f, normal_epsilon);\n\n\t\tfloat tmptrap = 0.0f;\n\t\treturn normalize(float3(\n\t\t\t\tmap(_p + dx, tmptrap) - map(_p - dx, tmptrap),\n\t\t\t\tmap(_p + dy, tmptrap) - map(_p - dy, tmptrap),\n\t\t\t\tmap(_p + dz, tmptrap) - map(_p - dz, tmptrap)\n\t\t\t));\n\t\}\n\n\tfloat3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)\n\t\{\n\t\t_camDir = normalize(_camDir);\n\t\tfloat3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);\n\t\tfloat3 forward = cross(_camUp, right );\n\n\t\tfloat aspect = float(resolution.x) / float(resolution.y);\n\t\tfloat u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);\n\t\tfloat v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);\n\t\tfloat fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));\n\n\t\tfloat3 rayOrigin = _camPos;\n\t\tfloat3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );\n\n\t\treturn rayDir;\n\t\}\n\n\t// http://iquilezles.org/www/articles/fog/fog.htm\n\tfloat3 applyFog(float3 _colour, float _distance)\n\t\{\n\t\tfloat fogAmount = 1.0 - exp( -_distance*fog_b );\n\t    float3  fogColor  = float3(0.5f ,0.6f,0.7f) * 0.05f;\n\t    return mix( _colour, fogColor, fogAmount );\n\t\}\n\n\tbool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit, float& _trap)\n\t\{\n\t\t//http://blog.hvidtfeldts.net/index.php/2011/09/distance-estimated-3d-fractals-v-the-mandelbulb-different-de-approximations/\n\t\tconst float fudgeFactor = 0.99f;\n\t\t// const float fudgeFactor = 1.0f;\n\n\t\tfloat dist = 0.0f;\n\t\t\n\t\tfor(int i = 0; i < _iterations; ++i)\n\t\t\{\n\t\t\tfloat3 hit = _p + (dist*_dir);\n\t\t\tfloat newtrap = 0.0f;\n\t\t\tfloat t = map(hit, newtrap);\n\n\t\t\tif(t < epsilon)\n\t\t\t\{\n\t\t\t\t// float3 nrm = estimate_normal(hit);\n\t\t\t\t// return shade(hit, nrm);\n\t\t\t\t_hit = hit;\n\t\t\t\treturn true;\n\t\t\t\}\n\n\t\t\tdist += t*fudgeFactor;\n\n\t\t\t_trap = min( _trap, newtrap );\n\t\t\}\n\n\t\t// return float3(0.2f, 0.2f, 0.2f);\n\t\treturn false;\n\t\}\n\n\tvoid process(int2 pos)\n\t\{\n\n\t\tfloat4x4 MVP = float4x4_identity;\n\n\t\tfloat3 colour = float3(0.0f, 0.0f, 0.0f);\n\n\t\tfloat distance = 9999.0f;\n\t\tfloat3 ro = camPos;\n\t\tfloat2 uv = float2(pos.x, pos.y);\n\t\tfor(int j=0; j<aa_samples; j++)\n\t\t\{\n\t\t\tfloat2 random_sample = rand( uv + (float2(j,j) * 0.1f) );\n\n\t\t\tfloat3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);\n\n\t\t\tfloat3 hit = float3(0.0f);\n\t\t\tfloat trap = 1e20f;\n\t\t\tif( traceWorld(ro, rd, iterations, hit, trap) )\n\t\t\t\{\n\t\t\t\ttrap = 1e20f;\n\t\t\t\t// More iterations to add more surface detail\n\t\t\t\ttraceWorld(ro, rd, iterations * 4, hit, trap);\n\t\t\t\tfloat3 nrm = estimate_normal(hit);\n\n\t\t\t\tdistance = pow(length(ro - hit), 3);\n\t\t\t\t\n\t\t\t\t// Back step along the normal\n\t\t\t\t// hit -= (0.025f * nrm);\n\t\t\t\thit -= (user2\[0] * nrm);\n\t\t\t\tcolour += shade(hit, nrm, trap);\n\t\t\t\}\n\t\t\}\n\t\tcolour /= aa_samples;\n\t\t// distance /= aa_samples;\n\n\t\t// colour = applyFog(colour, distance);\n\n\t\tdst() = float4(colour.x, colour.y, colour.z, 1.0);\n\t\}\n\};"
- rebuild ""
- "TestKernel_Max Iterations" 96
- "TestKernel_Camera Position" {-0.01 1.73 6}
- "TestKernel_Camera Up" {0 1 -0.15}
- "TestKernel_Field Of View" 25
- "TestKernel_AntiAliasing Samples" 1
- "TestKernel_Occlusion Samples" 12
- "TestKernel_Fog B" 0.007
- "TestKernel_Orbit Trap Colour A" {0.3 0.1 0.5}
- "TestKernel_Orbit Trap Colour B" {0.5 0.3 0.51}
- "TestKernel_Orbit Trap Intensity" 0.9
- "TestKernel_Scene Epsilon" 0.0005
- TestKernel_User {
-     {0.46 1.08 {"3.0 + fabs((sin(frame * \[knob \"animspeed\"])) * 5.0)"}}
-     {1.75 0.08 32}
-     {0 0.5 8.14}
-   }
- TestKernel_User2 {
-     {0.045 0 0}
-     {0 0 0}
-     {0 0 0}
-   }
- TestKernel_lightPositions {-0.5 2.995212763 4 0 {"((cos(frame * \[knob \"animspeed\"] )))"} {"((sin(frame  * \[knob \"animspeed\"]))) "}}
- TestKernel_lightColours {0.902 0.901 0.98 0 1 0.5}
- TestKernel_lightIntensities {30 5}
- format "1280 720 0 0 1280 720 1 HD_720"
- rebuild_finalise ""
- maxTileLines 25
- name BlinkScript1
- selected true
- xpos -225
- ypos -57
- addUserKnob {20 User}
- addUserKnob {7 animspeed l "Animation Speed" R 0 10}
- animspeed 0.005
-}
-set N6823ef0 [stack 0]
-Write {
- file /tmp/mandelbulb_%04d.png
- file_type png
- checkHashOnRead false
- version 3
- in_colorspace linear
- out_colorspace linear
- name Write1
- xpos -113
- ypos 9
- addUserKnob {20 caravr l CaraVR}
- addUserKnob {4 viewPresets l "View Presets" M {main stereo cams all}}
- addUserKnob {22 set l Set -STARTLINE T "w = nuke.thisNode()\nscriptViews = nuke.views()\nviewPreset = w\['viewPresets'].getValue()\nselectedViews = None\nif viewPreset == 0:\n  selectedViews = \['main']\nif viewPreset == 1:\n  stereoViews = \['left', 'right']\n  if set(stereoViews).issubset(set(scriptViews)):\n    selectedViews = stereoViews\n  else:\n    selectedViews = None\nelif viewPreset == 2:\n  selectedViews = \[v for v in scriptViews if 'cam' in v.lower()]\nelif viewPreset == 3:\n  selectedViews = scriptViews\nif selectedViews:\n  w\['views'].fromScript(' '.join(selectedViews))\n"}
 }
 Read {
  inputs 0
@@ -132,12 +74,151 @@ Write {
  addUserKnob {4 viewPresets l "View Presets" M {main stereo cams all}}
  addUserKnob {22 set l Set -STARTLINE T "w = nuke.thisNode()\nscriptViews = nuke.views()\nviewPreset = w\['viewPresets'].getValue()\nselectedViews = None\nif viewPreset == 0:\n  selectedViews = \['main']\nif viewPreset == 1:\n  stereoViews = \['left', 'right']\n  if set(stereoViews).issubset(set(scriptViews)):\n    selectedViews = stereoViews\n  else:\n    selectedViews = None\nelif viewPreset == 2:\n  selectedViews = \[v for v in scriptViews if 'cam' in v.lower()]\nelif viewPreset == 3:\n  selectedViews = scriptViews\nif selectedViews:\n  w\['views'].fromScript(' '.join(selectedViews))\n"}
 }
-push $N6823ef0
+Write {
+ inputs 0
+ file /tmp/mandelbulb_%04d.png
+ file_type png
+ checkHashOnRead false
+ version 3
+ in_colorspace linear
+ out_colorspace linear
+ name Write1
+ xpos -245
+ ypos -55
+ addUserKnob {20 caravr l CaraVR}
+ addUserKnob {4 viewPresets l "View Presets" M {main stereo cams all}}
+ addUserKnob {22 set l Set -STARTLINE T "w = nuke.thisNode()\nscriptViews = nuke.views()\nviewPreset = w\['viewPresets'].getValue()\nselectedViews = None\nif viewPreset == 0:\n  selectedViews = \['main']\nif viewPreset == 1:\n  stereoViews = \['left', 'right']\n  if set(stereoViews).issubset(set(scriptViews)):\n    selectedViews = stereoViews\n  else:\n    selectedViews = None\nelif viewPreset == 2:\n  selectedViews = \[v for v in scriptViews if 'cam' in v.lower()]\nelif viewPreset == 3:\n  selectedViews = scriptViews\nif selectedViews:\n  w\['views'].fromScript(' '.join(selectedViews))\n"}
+}
+BlinkScript {
+ inputs 0
+ kernelSourceFile /mnt/netdev/tom.minor/dev/blinktracer/sdf_renderer.rpp
+ recompileCount 531
+ ProgramGroup 1
+ KernelDescription "2 \"TestKernel\" iterate pixelWise d6675068c82de0de04bd9be6bfbb87eab2a0e308c0d14ba0c6cb782b04c4eec3 1 \"dst\" Write Point 20 \"Image Resolution\" Int 2 AAUAANACAAA= \"Max Iterations\" Int 1 ZAAAAA== \"Camera Position\" Float 3 AAAAAM3MTD3NzEw+AAAAAA== \"Camera Direction\" Float 3 AACAPwAAAAAAAAAAAAAAAA== \"Camera Up\" Float 3 AAAAAAAAgD8AAAAAAAAAAA== \"Field Of View\" Float 1 AABIQg== \"AntiAliasing Samples\" Int 1 BAAAAA== \"Occlusion Samples\" Int 1 BgAAAA== \"Fog B\" Float 1 AAAAPw== \"Orbit Trap Colour A\" Float 3 mpkZP83MzD4AAAAAAAAAAA== \"Orbit Trap Colour B\" Float 3 mpmZPs3MTD7NzEw/AAAAAA== \"Orbit Trap Intensity\" Float 1 AACAPw== \"Orbit Trap Offset\" Float 3 AAAAAAAAAAAAAAAAAAAAAA== \"Scene Epsilon\" Float 1 CtcjPA== \"Normal Epsilon\" Float 1 bxKDOg== \"User\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"User2\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"lightPositions\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightColours\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightIntensities\" Float 2 AAAAAAAAAAA= 20 \"resolution\" 2 1 \"iterations\" 1 1 \"camPos\" 3 1 \"camDir\" 3 1 \"camUp\" 3 1 \"fov\" 1 1 \"aa_samples\" 1 1 \"occlusion_samples\" 1 1 \"fog_b\" 1 1 \"trap_colour_a\" 3 1 \"trap_colour_b\" 3 1 \"orbit_trap_intensity\" 1 1 \"orbit_trap_offset\" 3 1 \"epsilon\" 1 1 \"normal_epsilon\" 1 1 \"user\" 1 9 \"user2\" 1 9 \"lightPositions\" 3 2 \"lightColours\" 3 2 \"lightIntensities\" 1 2 4 \"MAX_DIST\" Float 1 1 AAAAAA== \"m_light_position\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_colour\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_strength\" Float 1 2 AAAAAAAAAAA="
+ kernelSource "#include \"glsl_functions.h\"\n#include \"sdf_functions.h\"\n#include \"sdf_primitives.h\"\n\n///**** TODO ****\n// * Clean up this code, very rough atm\n// * Define camera via rotation angles\n// * Make the scene the foundry logo?\n// * Check the cool posts about magnetic pole stuff I found ages ago\n\nkernel TestKernel : ImageComputationKernel<ePixelWise>\n\{\n\t// No input data needed\n\tImage<eWrite, eAccessPoint, eEdgeNone> dst;\n\n\tlocal:\n\t// Careful, these constants don't seem to be properly initialised\n\tconst float MAX_DIST = 9999999.9f;\n\t\n\tstatic const int MAX_LIGHTS = 2;\n\tfloat3 m_light_position\[MAX_LIGHTS];\n\tfloat3 m_light_colour\[MAX_LIGHTS];\n\tfloat m_light_strength\[MAX_LIGHTS];\n\n\tparam:\n\tint2 resolution;\n\tint iterations;\n\t\n\tfloat3 camPos;\n\tfloat3 camDir;\n\tfloat3 camUp;\n\tfloat fov;\n\n\tint aa_samples;\n\tint occlusion_samples;\n\tfloat fog_b;\n\t\n\tfloat3 trap_colour_a;\n\tfloat3 trap_colour_b;\n\tfloat orbit_trap_intensity;\n\tfloat3 orbit_trap_offset;\n\n\tfloat epsilon;\n\tfloat normal_epsilon;\n\n\tfloat user\[9];\n\tfloat user2\[9];\n\n\tfloat3 lightPositions\[MAX_LIGHTS];\n\tfloat3 lightColours\[MAX_LIGHTS];\n\tfloat  lightIntensities\[MAX_LIGHTS];\n\n\tvoid define()\n\t\{\n\t\tdefineParam(resolution, \"Image Resolution\", int2(1280, 720) );\n\t\tdefineParam(iterations, \"Max Iterations\", 100);\n\n\t\tdefineParam(camPos, \"Camera Position\", float3(0.0f, 0.05f, 0.2f) );\n\t\tdefineParam(camDir, \"Camera Direction\", float3(1.0f, 0.0f, 0.0f) );\n\t\tdefineParam(camUp, \"Camera Up\", float3(0.0f, 1.0f, 0.0f) );\n\n\t\tdefineParam(fov, \"Field Of View\", 50.0f);\n\n\t\tdefineParam(aa_samples, \"AntiAliasing Samples\", 4);\n\t\tdefineParam(occlusion_samples, \"Occlusion Samples\", 6);\n\t\tdefineParam(fog_b, \"Fog B\", 0.5f);\n\t\tdefineParam(trap_colour_a, \"Orbit Trap Colour A\", float3(0.6f, 0.4f, 0.0f) );\n\t\tdefineParam(trap_colour_b, \"Orbit Trap Colour B\", float3(0.3f, 0.2f, 0.8f) );\n\t\tdefineParam(orbit_trap_intensity, \"Orbit Trap Intensity\", 1.0f);\n\t\tdefineParam(orbit_trap_offset, \"Orbit Trap Offset\", float3(0.0f));\n\n\t\tdefineParam(epsilon, \"Scene Epsilon\", 0.01f);\n\t\tdefineParam(normal_epsilon, \"Normal Epsilon\", 0.001f);\n\n\t\t// Convenience for scene editing\n\t\tdefineParam(user, \"User\");\n\t\tdefineParam(user2, \"User2\");\n\n\t\t// defineParam(lightPositions, \"Light Positions\");\n\t\t// defineParam(lightColours, \"Light Colours\");\n\t\t// defineParam(lightIntensities, \"Light Intensities\");\n\t\}\n\t\n\tvoid init()\n\t\{\n\t\t// m_light_position\[0]   = float3(3.0f, 8.0f, -2.0f);\n\n\t\t// m_light_colour\[0] \t= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);\n\t\t// m_light_strength\[0]\t= 180.0f;\n\n\t\t// m_light_position\[1]   = float3(-3.0f, 3.0f, -2.0f);\n\t\t// m_light_colour\[1] \t= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);\n\t\t// m_light_strength\[1]\t= 40.0f;\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tm_light_position\[i] = lightPositions\[i];\n\t\t\tm_light_colour\[i] \t= lightColours\[i];\n\t\t\tm_light_strength\[i] = lightIntensities\[i];\n\t\t\}\n\t\}\n\n\t// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl\n\tfloat rand(float2 _co)\n\t\{\n \t   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);\n\t\}\n\n\tfloat sdMandelbulb(float3 _p, float _power, float _iterations, float& _trap)\n\t// float sdMandelbulb(float3 _p, float _power, float _iterations)\n\t\{\n\t\tconst float sq_threshold = 2.0f; // Divergence threshold\n\t\tconst float s = 0.9f;\n\n\t\tfloat3 zn = _p;\n\t\tfloat rad = 0.0f;\n\t\tfloat dist = 0.0f;\n\t\tfloat d = 1.0f;\n        float k = 1.0f;\n\n        _trap = 1e10;\n\t\tfor(int i = 0; i < _iterations; i++)\n\t\t\{\n\t\t\trad = length(zn);\n\n\t\t\t_trap = min(_trap, dot(zn,zn) / (k*k) );\n\n\t\t\tif(rad > sq_threshold)\n\t\t\t\{\n\t\t\t\tdist = 0.5f * rad * log(rad)/float(d);\n\t\t\t\}\n\t\t\telse\n\t\t\t\{\n\t\t\t\tfloat th = atan2( length( float3(zn.x, zn.y, 0.0f) ), zn.z);\n\t\t\t\tfloat phi = atan2( zn.y, zn.x );\n\t\t\t\tfloat rado = pow(rad, _power);\n\t\t\t\td = pow(rad, _power - 1.0f) * (_power - 1.0f) * d + 1.0f;\n\n\t\t\t\tfloat sint = sin(th * _power);\n\t\t\t\tzn.x = rado * sint * cos(phi * _power);\n\t\t\t\tzn.y = rado * sint * sin(phi * _power);\n\t\t\t\tzn.z = rado * cos(th * _power);\n\t\t\t\tzn += _p;\n\t\t\t\}\n\n\t\t\tk *= s;\n\t\t\}\n\n\t\treturn dist;\n\t\}\n\n\tfloat map(float3 _p, float& _trap)\n\t// float map(float3 _p)\n\t\{\n\t\tfloat3 p = _p;\n\t\tfloat d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );\n\t\t\n\t\tp = p - float3(0.0f, user\[1], 0.0f);\n\t\t// p = repeatXYZ(p, float3(user\[0], user\[0], user\[0]) );\n\t\t// float d2 = sdSphere(p, 0.1f);\n\t\t// float d2 = sdBox(p, float3(0.1f) );\n\n\t\tfloat3 p2 = _p - float3(user\[6], user\[7], user\[8]);\n\t\t\n\t\tfloat d2 = sdMandelbulb(p, user\[2], int(user\[5]), _trap);\n\t\t// float d2 = sdMandelbulb(p, user\[2], int(user\[5]));\n\t\t\n\t\treturn min(d2, d3);\n\t\}\n\n\t\t// Classic AO\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat classicOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = _n * l;\n\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://psgraphics.blogspot.co.uk/2014/11/making-orthonormal-basis-from-unit.html\n\t// float3 createFrisvadONB(float3 _dir, float _i)\n\t// \{\n\t// \tif( )\n\t// \}\n\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat3 randomSphereDir(float2 _rnd)\n\t\{\n\t\tfloat s = _rnd.x * PI * 2.0f;\n\t\tfloat t = _rnd.y * 2.0 - 1.0f;\n\t\treturn float3( sin(s), cos(s), t) / sqrt(1.0f + t * t);\n\t\}\n\n\tfloat3 randomHemisphereDir(float3 _dir, float _i)\n\t\{\n\t\tfloat3 v = randomSphereDir( float2(rand(_i+1.0f), rand(_i + 2.0f)) );\n\t\treturn v * sign(dot(v, _dir));\n\t\}\n\n\tfloat hemisphericalOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\t\tconst float inverseOcclusionSamples = 1.0f / float(occlusion_samples);\n\t\tconst float rad = 1.0f * -1.0f * inverseOcclusionSamples;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = normalize(_n + randomHemisphereDir(_n,l) * rad) * l;\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm\n\tfloat shadow(float3 _ro, float3 _rd, float _mint, float _maxt)\n\t\{\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn 1.0f;\n\t\}\n\n\tfloat softshadow(float3 _ro, float3 _rd, float _mint, float _maxt, float _k)\n\t\{\n\t\tfloat result = 1.0f;\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tresult = min(result, _k*h/t);\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn result;\n\t\}\n\n\tfloat3 shade(float3 _p, float3 _n, float _trap)\n\t\{\n\t\tfloat3 radiance = float3(0.0f);\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tfloat3 light_path = _p - m_light_position\[i];\n\t\t\tfloat3 light_dir = normalize(light_path);\n\t\t\tfloat attenuation = 1.0f / pow(length(light_path), 2);\n\t\t\tfloat halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little\n\n\t\t\tfloat shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);\n\t\t\tshadowed = clamp(shadowed, 0.025f, 1.0f);\n\n\t\t\tfloat3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);\n\t\t\tradiance +=  diffuse_colour * (halflambert * m_light_colour\[i] * m_light_strength\[i] * attenuation) * shadowed;\n\t\t\}\n\n\t\treturn radiance * hemisphericalOcclusion(_p, _n, user\[3], user\[4]);\n\t\}\n\n\t// float estimate_occlusion(float3 _p, float3 _n)\n\t// \{\n\n\t// \}\n\n\t// Finite difference estimation\n\tfloat3 estimate_normal(float3 _p)\n\t\{\n\t\tfloat3 dx = float3(normal_epsilon, 0.0f, 0.0f);\n\t\tfloat3 dy = float3(0.0f, normal_epsilon, 0.0f);\n\t\tfloat3 dz = float3(0.0f, 0.0f, normal_epsilon);\n\n\t\tfloat tmptrap = 0.0f;\n\t\treturn normalize(float3(\n\t\t\t\tmap(_p + dx, tmptrap) - map(_p - dx, tmptrap),\n\t\t\t\tmap(_p + dy, tmptrap) - map(_p - dy, tmptrap),\n\t\t\t\tmap(_p + dz, tmptrap) - map(_p - dz, tmptrap)\n\t\t\t));\n\t\}\n\n\tfloat3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)\n\t\{\n\t\t_camDir = normalize(_camDir);\n\t\tfloat3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);\n\t\tfloat3 forward = cross(_camUp, right );\n\n\t\tfloat aspect = float(resolution.x) / float(resolution.y);\n\t\tfloat u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);\n\t\tfloat v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);\n\t\tfloat fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));\n\n\t\tfloat3 rayOrigin = _camPos;\n\t\tfloat3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );\n\n\t\treturn rayDir;\n\t\}\n\n\t// http://iquilezles.org/www/articles/fog/fog.htm\n\tfloat3 applyFog(float3 _colour, float _distance)\n\t\{\n\t\tfloat fogAmount = 1.0 - exp( -_distance*fog_b );\n\t    float3  fogColor  = float3(0.5f ,0.6f,0.7f) * 0.05f;\n\t    return mix( _colour, fogColor, fogAmount );\n\t\}\n\n\tbool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit, float& _trap)\n\t\{\n\t\t//http://blog.hvidtfeldts.net/index.php/2011/09/distance-estimated-3d-fractals-v-the-mandelbulb-different-de-approximations/\n\t\tconst float fudgeFactor = 0.99f;\n\t\t// const float fudgeFactor = 1.0f;\n\n\t\tfloat dist = 0.0f;\n\t\t\n\t\tfor(int i = 0; i < _iterations; ++i)\n\t\t\{\n\t\t\tfloat3 hit = _p + (dist*_dir);\n\t\t\tfloat newtrap = 0.0f;\n\t\t\tfloat t = map(hit, newtrap);\n\n\t\t\tif(t < epsilon)\n\t\t\t\{\n\t\t\t\t// float3 nrm = estimate_normal(hit);\n\t\t\t\t// return shade(hit, nrm);\n\t\t\t\t_hit = hit;\n\t\t\t\treturn true;\n\t\t\t\}\n\n\t\t\tdist += t*fudgeFactor;\n\n\t\t\t_trap = min( _trap, newtrap );\n\t\t\}\n\n\t\t// return float3(0.2f, 0.2f, 0.2f);\n\t\treturn false;\n\t\}\n\n\tvoid process(int2 pos)\n\t\{\n\n\t\tfloat4x4 MVP = float4x4_identity;\n\n\t\tfloat3 colour = float3(0.0f, 0.0f, 0.0f);\n\n\t\tfloat distance = 9999.0f;\n\t\tfloat3 ro = camPos;\n\t\tfloat2 uv = float2(pos.x, pos.y);\n\t\tfor(int j=0; j<aa_samples; j++)\n\t\t\{\n\t\t\tfloat2 random_sample = rand( uv + (float2(j,j) * 0.1f) );\n\n\t\t\tfloat3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);\n\n\t\t\tfloat3 hit = float3(0.0f);\n\t\t\tfloat trap = 1e20f;\n\t\t\tif( traceWorld(ro, rd, iterations, hit, trap) )\n\t\t\t\{\n\t\t\t\ttrap = 1e20f;\n\t\t\t\t// More iterations to add more surface detail\n\t\t\t\ttraceWorld(ro, rd, iterations * 4, hit, trap);\n\t\t\t\tfloat3 nrm = estimate_normal(hit);\n\n\t\t\t\tdistance = pow(length(ro - hit), 3);\n\t\t\t\t\n\t\t\t\t// Back step along the normal\n\t\t\t\t// hit -= (0.025f * nrm);\n\t\t\t\thit -= (user2\[0] * nrm);\n\t\t\t\tcolour += shade(hit, nrm, trap);\n\t\t\t\}\n\t\t\}\n\t\tcolour /= aa_samples;\n\t\t// distance /= aa_samples;\n\n\t\t// colour = applyFog(colour, distance);\n\n\t\tdst() = float4(colour.x, colour.y, colour.z, 1.0);\n\t\}\n\};"
+ rebuild ""
+ "TestKernel_Image Resolution" {4096 2160}
+ "TestKernel_Max Iterations" 96
+ "TestKernel_Camera Position" {-0.01 1.73 6}
+ "TestKernel_Camera Up" {0 1 -0.15}
+ "TestKernel_Field Of View" 25
+ "TestKernel_AntiAliasing Samples" 1
+ "TestKernel_Occlusion Samples" 12
+ "TestKernel_Fog B" 0.007
+ "TestKernel_Orbit Trap Colour A" {-0.21 -0.13 0.29}
+ "TestKernel_Orbit Trap Colour B" {1 1 1}
+ "TestKernel_Orbit Trap Intensity" 0
+ "TestKernel_Scene Epsilon" 0.0005
+ TestKernel_User {
+     {0.46 1.08 {"3.0 + fabs((sin(frame * \[knob \"animspeed\"])) * 5.0)"}}
+     {1.75 0.08 32}
+     {0 0.5 8.14}
+   }
+ TestKernel_User2 {
+     {0.045 0 0}
+     {0 0 0}
+     {0 0 0}
+   }
+ TestKernel_lightPositions {-0.5 2.995212763 4 0 {"((cos(frame * \[knob \"animspeed\"] )))"} {"((sin(frame  * \[knob \"animspeed\"]))) "}}
+ TestKernel_lightColours {0.902 0.901 0.98 0 1 0.5}
+ TestKernel_lightIntensities {30 5}
+ format "4096 2160 0 0 4096 2160 1 4K_DCP"
+ rebuild_finalise ""
+ maxTileLines 25
+ name BlinkScript2
+ xpos 365
+ ypos -116
+ addUserKnob {20 User}
+ addUserKnob {7 animspeed l "Animation Speed" R 0 10}
+ animspeed 0.005
+}
+Reformat {
+ format "2048 1080 0 0 2048 1080 1 2K_DCP"
+ name Reformat2
+ xpos 365
+ ypos -60
+}
+set C7266410 [stack 0]
+set N72be520 [stack 0]
+BlinkScript {
+ inputs 0
+ kernelSourceFile /mnt/netdev/tom.minor/dev/blinktracer/sdf_renderer.rpp
+ recompileCount 531
+ ProgramGroup 1
+ KernelDescription "2 \"TestKernel\" iterate pixelWise d6675068c82de0de04bd9be6bfbb87eab2a0e308c0d14ba0c6cb782b04c4eec3 1 \"dst\" Write Point 20 \"Image Resolution\" Int 2 AAUAANACAAA= \"Max Iterations\" Int 1 ZAAAAA== \"Camera Position\" Float 3 AAAAAM3MTD3NzEw+AAAAAA== \"Camera Direction\" Float 3 AACAPwAAAAAAAAAAAAAAAA== \"Camera Up\" Float 3 AAAAAAAAgD8AAAAAAAAAAA== \"Field Of View\" Float 1 AABIQg== \"AntiAliasing Samples\" Int 1 BAAAAA== \"Occlusion Samples\" Int 1 BgAAAA== \"Fog B\" Float 1 AAAAPw== \"Orbit Trap Colour A\" Float 3 mpkZP83MzD4AAAAAAAAAAA== \"Orbit Trap Colour B\" Float 3 mpmZPs3MTD7NzEw/AAAAAA== \"Orbit Trap Intensity\" Float 1 AACAPw== \"Orbit Trap Offset\" Float 3 AAAAAAAAAAAAAAAAAAAAAA== \"Scene Epsilon\" Float 1 CtcjPA== \"Normal Epsilon\" Float 1 bxKDOg== \"User\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"User2\" Float 9 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA \"lightPositions\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightColours\" Float 6 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"lightIntensities\" Float 2 AAAAAAAAAAA= 20 \"resolution\" 2 1 \"iterations\" 1 1 \"camPos\" 3 1 \"camDir\" 3 1 \"camUp\" 3 1 \"fov\" 1 1 \"aa_samples\" 1 1 \"occlusion_samples\" 1 1 \"fog_b\" 1 1 \"trap_colour_a\" 3 1 \"trap_colour_b\" 3 1 \"orbit_trap_intensity\" 1 1 \"orbit_trap_offset\" 3 1 \"epsilon\" 1 1 \"normal_epsilon\" 1 1 \"user\" 1 9 \"user2\" 1 9 \"lightPositions\" 3 2 \"lightColours\" 3 2 \"lightIntensities\" 1 2 4 \"MAX_DIST\" Float 1 1 AAAAAA== \"m_light_position\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_colour\" Float 3 2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \"m_light_strength\" Float 1 2 AAAAAAAAAAA="
+ kernelSource "#include \"glsl_functions.h\"\n#include \"sdf_functions.h\"\n#include \"sdf_primitives.h\"\n\n///**** TODO ****\n// * Clean up this code, very rough atm\n// * Define camera via rotation angles\n// * Make the scene the foundry logo?\n// * Check the cool posts about magnetic pole stuff I found ages ago\n\nkernel TestKernel : ImageComputationKernel<ePixelWise>\n\{\n\t// No input data needed\n\tImage<eWrite, eAccessPoint, eEdgeNone> dst;\n\n\tlocal:\n\t// Careful, these constants don't seem to be properly initialised\n\tconst float MAX_DIST = 9999999.9f;\n\t\n\tstatic const int MAX_LIGHTS = 2;\n\tfloat3 m_light_position\[MAX_LIGHTS];\n\tfloat3 m_light_colour\[MAX_LIGHTS];\n\tfloat m_light_strength\[MAX_LIGHTS];\n\n\tparam:\n\tint2 resolution;\n\tint iterations;\n\t\n\tfloat3 camPos;\n\tfloat3 camDir;\n\tfloat3 camUp;\n\tfloat fov;\n\n\tint aa_samples;\n\tint occlusion_samples;\n\tfloat fog_b;\n\t\n\tfloat3 trap_colour_a;\n\tfloat3 trap_colour_b;\n\tfloat orbit_trap_intensity;\n\tfloat3 orbit_trap_offset;\n\n\tfloat epsilon;\n\tfloat normal_epsilon;\n\n\tfloat user\[9];\n\tfloat user2\[9];\n\n\tfloat3 lightPositions\[MAX_LIGHTS];\n\tfloat3 lightColours\[MAX_LIGHTS];\n\tfloat  lightIntensities\[MAX_LIGHTS];\n\n\tvoid define()\n\t\{\n\t\tdefineParam(resolution, \"Image Resolution\", int2(1280, 720) );\n\t\tdefineParam(iterations, \"Max Iterations\", 100);\n\n\t\tdefineParam(camPos, \"Camera Position\", float3(0.0f, 0.05f, 0.2f) );\n\t\tdefineParam(camDir, \"Camera Direction\", float3(1.0f, 0.0f, 0.0f) );\n\t\tdefineParam(camUp, \"Camera Up\", float3(0.0f, 1.0f, 0.0f) );\n\n\t\tdefineParam(fov, \"Field Of View\", 50.0f);\n\n\t\tdefineParam(aa_samples, \"AntiAliasing Samples\", 4);\n\t\tdefineParam(occlusion_samples, \"Occlusion Samples\", 6);\n\t\tdefineParam(fog_b, \"Fog B\", 0.5f);\n\t\tdefineParam(trap_colour_a, \"Orbit Trap Colour A\", float3(0.6f, 0.4f, 0.0f) );\n\t\tdefineParam(trap_colour_b, \"Orbit Trap Colour B\", float3(0.3f, 0.2f, 0.8f) );\n\t\tdefineParam(orbit_trap_intensity, \"Orbit Trap Intensity\", 1.0f);\n\t\tdefineParam(orbit_trap_offset, \"Orbit Trap Offset\", float3(0.0f));\n\n\t\tdefineParam(epsilon, \"Scene Epsilon\", 0.01f);\n\t\tdefineParam(normal_epsilon, \"Normal Epsilon\", 0.001f);\n\n\t\t// Convenience for scene editing\n\t\tdefineParam(user, \"User\");\n\t\tdefineParam(user2, \"User2\");\n\n\t\t// defineParam(lightPositions, \"Light Positions\");\n\t\t// defineParam(lightColours, \"Light Colours\");\n\t\t// defineParam(lightIntensities, \"Light Intensities\");\n\t\}\n\t\n\tvoid init()\n\t\{\n\t\t// m_light_position\[0]   = float3(3.0f, 8.0f, -2.0f);\n\n\t\t// m_light_colour\[0] \t= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);\n\t\t// m_light_strength\[0]\t= 180.0f;\n\n\t\t// m_light_position\[1]   = float3(-3.0f, 3.0f, -2.0f);\n\t\t// m_light_colour\[1] \t= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);\n\t\t// m_light_strength\[1]\t= 40.0f;\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tm_light_position\[i] = lightPositions\[i];\n\t\t\tm_light_colour\[i] \t= lightColours\[i];\n\t\t\tm_light_strength\[i] = lightIntensities\[i];\n\t\t\}\n\t\}\n\n\t// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl\n\tfloat rand(float2 _co)\n\t\{\n \t   return fract(sin(dot(_co , float2(12.9898f, 78.233f))) * 43758.5453f);\n\t\}\n\n\tfloat sdMandelbulb(float3 _p, float _power, float _iterations, float& _trap)\n\t// float sdMandelbulb(float3 _p, float _power, float _iterations)\n\t\{\n\t\tconst float sq_threshold = 2.0f; // Divergence threshold\n\t\tconst float s = 0.9f;\n\n\t\tfloat3 zn = _p;\n\t\tfloat rad = 0.0f;\n\t\tfloat dist = 0.0f;\n\t\tfloat d = 1.0f;\n        float k = 1.0f;\n\n        _trap = 1e10;\n\t\tfor(int i = 0; i < _iterations; i++)\n\t\t\{\n\t\t\trad = length(zn);\n\n\t\t\t_trap = min(_trap, dot(zn,zn) / (k*k) );\n\n\t\t\tif(rad > sq_threshold)\n\t\t\t\{\n\t\t\t\tdist = 0.5f * rad * log(rad)/float(d);\n\t\t\t\}\n\t\t\telse\n\t\t\t\{\n\t\t\t\tfloat th = atan2( length( float3(zn.x, zn.y, 0.0f) ), zn.z);\n\t\t\t\tfloat phi = atan2( zn.y, zn.x );\n\t\t\t\tfloat rado = pow(rad, _power);\n\t\t\t\td = pow(rad, _power - 1.0f) * (_power - 1.0f) * d + 1.0f;\n\n\t\t\t\tfloat sint = sin(th * _power);\n\t\t\t\tzn.x = rado * sint * cos(phi * _power);\n\t\t\t\tzn.y = rado * sint * sin(phi * _power);\n\t\t\t\tzn.z = rado * cos(th * _power);\n\t\t\t\tzn += _p;\n\t\t\t\}\n\n\t\t\tk *= s;\n\t\t\}\n\n\t\treturn dist;\n\t\}\n\n\tfloat map(float3 _p, float& _trap)\n\t// float map(float3 _p)\n\t\{\n\t\tfloat3 p = _p;\n\t\tfloat d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );\n\t\t\n\t\tp = p - float3(0.0f, user\[1], 0.0f);\n\t\t// p = repeatXYZ(p, float3(user\[0], user\[0], user\[0]) );\n\t\t// float d2 = sdSphere(p, 0.1f);\n\t\t// float d2 = sdBox(p, float3(0.1f) );\n\n\t\tfloat3 p2 = _p - float3(user\[6], user\[7], user\[8]);\n\t\t\n\t\tfloat d2 = sdMandelbulb(p, user\[2], int(user\[5]), _trap);\n\t\t// float d2 = sdMandelbulb(p, user\[2], int(user\[5]));\n\t\t\n\t\treturn min(d2, d3);\n\t\}\n\n\t\t// Classic AO\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat classicOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = _n * l;\n\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://psgraphics.blogspot.co.uk/2014/11/making-orthonormal-basis-from-unit.html\n\t// float3 createFrisvadONB(float3 _dir, float _i)\n\t// \{\n\t// \tif( )\n\t// \}\n\n\t// http://www.aduprat.com/portfolio/?page=articles/hemisphericalSDFAO\n\tfloat3 randomSphereDir(float2 _rnd)\n\t\{\n\t\tfloat s = _rnd.x * PI * 2.0f;\n\t\tfloat t = _rnd.y * 2.0 - 1.0f;\n\t\treturn float3( sin(s), cos(s), t) / sqrt(1.0f + t * t);\n\t\}\n\n\tfloat3 randomHemisphereDir(float3 _dir, float _i)\n\t\{\n\t\tfloat3 v = randomSphereDir( float2(rand(_i+1.0f), rand(_i + 2.0f)) );\n\t\treturn v * sign(dot(v, _dir));\n\t\}\n\n\tfloat hemisphericalOcclusion(float3 _p, float3 _n, float _maxDist, float _falloff)\n\t\{\n\t\tfloat ao = 0.0f;\n\t\tconst float inverseOcclusionSamples = 1.0f / float(occlusion_samples);\n\t\tconst float rad = 1.0f * -1.0f * inverseOcclusionSamples;\n\n\t\tfor(int i = 0; i < occlusion_samples; i++)\n\t\t\{\n\t\t\tfloat l = rand(float(i)) * _maxDist; // Randomly sized sample\n\t\t\tfloat3 rayDir = normalize(_n + randomHemisphereDir(_n,l) * rad) * l;\n\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tao += (l - map(_p + rayDir, tmptrap)) / pow(1.0f + l, _falloff);\n\t\t\}\n\n\t\treturn clamp( 1.0f - ao / float(occlusion_samples), 0.0f, 1.0f);\n\t\}\n\n\t// http://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm\n\tfloat shadow(float3 _ro, float3 _rd, float _mint, float _maxt)\n\t\{\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn 1.0f;\n\t\}\n\n\tfloat softshadow(float3 _ro, float3 _rd, float _mint, float _maxt, float _k)\n\t\{\n\t\tfloat result = 1.0f;\n\t\tfor(float t = _mint; t < _maxt; )\n\t\t\{\n\t\t\tfloat tmptrap = 0.0f;\n\t\t\tfloat h = map(_ro + _rd*t, tmptrap);\n\t\t\tif(h < 0.001)\n\t\t\t\{\n\t\t\t\treturn 0.0f;\n\t\t\t\}\n\n\t\t\tresult = min(result, _k*h/t);\n\t\t\tt += h;\n\t\t\}\n\n\t\treturn result;\n\t\}\n\n\tfloat3 shade(float3 _p, float3 _n, float _trap)\n\t\{\n\t\tfloat3 radiance = float3(0.0f);\n\n\t\tfor(int i = 0; i < MAX_LIGHTS; i++)\n\t\t\{\n\t\t\tfloat3 light_path = _p - m_light_position\[i];\n\t\t\tfloat3 light_dir = normalize(light_path);\n\t\t\tfloat attenuation = 1.0f / pow(length(light_path), 2);\n\t\t\tfloat halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little\n\n\t\t\tfloat shadowed = softshadow(_p, -light_dir, 0.1f, 250.0f, 7.0f);\n\t\t\tshadowed = clamp(shadowed, 0.025f, 1.0f);\n\n\t\t\tfloat3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);\n\t\t\tradiance +=  diffuse_colour * (halflambert * m_light_colour\[i] * m_light_strength\[i] * attenuation) * shadowed;\n\t\t\}\n\n\t\treturn radiance * hemisphericalOcclusion(_p, _n, user\[3], user\[4]);\n\t\}\n\n\t// float estimate_occlusion(float3 _p, float3 _n)\n\t// \{\n\n\t// \}\n\n\t// Finite difference estimation\n\tfloat3 estimate_normal(float3 _p)\n\t\{\n\t\tfloat3 dx = float3(normal_epsilon, 0.0f, 0.0f);\n\t\tfloat3 dy = float3(0.0f, normal_epsilon, 0.0f);\n\t\tfloat3 dz = float3(0.0f, 0.0f, normal_epsilon);\n\n\t\tfloat tmptrap = 0.0f;\n\t\treturn normalize(float3(\n\t\t\t\tmap(_p + dx, tmptrap) - map(_p - dx, tmptrap),\n\t\t\t\tmap(_p + dy, tmptrap) - map(_p - dy, tmptrap),\n\t\t\t\tmap(_p + dz, tmptrap) - map(_p - dz, tmptrap)\n\t\t\t));\n\t\}\n\n\tfloat3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)\n\t\{\n\t\t_camDir = normalize(_camDir);\n\t\tfloat3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);\n\t\tfloat3 forward = cross(_camUp, right );\n\n\t\tfloat aspect = float(resolution.x) / float(resolution.y);\n\t\tfloat u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);\n\t\tfloat v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);\n\t\tfloat fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));\n\n\t\tfloat3 rayOrigin = _camPos;\n\t\tfloat3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );\n\n\t\treturn rayDir;\n\t\}\n\n\t// http://iquilezles.org/www/articles/fog/fog.htm\n\tfloat3 applyFog(float3 _colour, float _distance)\n\t\{\n\t\tfloat fogAmount = 1.0 - exp( -_distance*fog_b );\n\t    float3  fogColor  = float3(0.5f ,0.6f,0.7f) * 0.05f;\n\t    return mix( _colour, fogColor, fogAmount );\n\t\}\n\n\tbool traceWorld(float3 _p, float3 _dir, int _iterations, float3& _hit, float& _trap)\n\t\{\n\t\t//http://blog.hvidtfeldts.net/index.php/2011/09/distance-estimated-3d-fractals-v-the-mandelbulb-different-de-approximations/\n\t\tconst float fudgeFactor = 0.99f;\n\t\t// const float fudgeFactor = 1.0f;\n\n\t\tfloat dist = 0.0f;\n\t\t\n\t\tfor(int i = 0; i < _iterations; ++i)\n\t\t\{\n\t\t\tfloat3 hit = _p + (dist*_dir);\n\t\t\tfloat newtrap = 0.0f;\n\t\t\tfloat t = map(hit, newtrap);\n\n\t\t\tif(t < epsilon)\n\t\t\t\{\n\t\t\t\t// float3 nrm = estimate_normal(hit);\n\t\t\t\t// return shade(hit, nrm);\n\t\t\t\t_hit = hit;\n\t\t\t\treturn true;\n\t\t\t\}\n\n\t\t\tdist += t*fudgeFactor;\n\n\t\t\t_trap = min( _trap, newtrap );\n\t\t\}\n\n\t\t// return float3(0.2f, 0.2f, 0.2f);\n\t\treturn false;\n\t\}\n\n\tvoid process(int2 pos)\n\t\{\n\n\t\tfloat4x4 MVP = float4x4_identity;\n\n\t\tfloat3 colour = float3(0.0f, 0.0f, 0.0f);\n\n\t\tfloat distance = 9999.0f;\n\t\tfloat3 ro = camPos;\n\t\tfloat2 uv = float2(pos.x, pos.y);\n\t\tfor(int j=0; j<aa_samples; j++)\n\t\t\{\n\t\t\tfloat2 random_sample = rand( uv + (float2(j,j) * 0.1f) );\n\n\t\t\tfloat3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);\n\n\t\t\tfloat3 hit = float3(0.0f);\n\t\t\tfloat trap = 1e20f;\n\t\t\tif( traceWorld(ro, rd, iterations, hit, trap) )\n\t\t\t\{\n\t\t\t\ttrap = 1e20f;\n\t\t\t\t// More iterations to add more surface detail\n\t\t\t\ttraceWorld(ro, rd, iterations * 4, hit, trap);\n\t\t\t\tfloat3 nrm = estimate_normal(hit);\n\n\t\t\t\tdistance = pow(length(ro - hit), 3);\n\t\t\t\t\n\t\t\t\t// Back step along the normal\n\t\t\t\t// hit -= (0.025f * nrm);\n\t\t\t\thit -= (user2\[0] * nrm);\n\t\t\t\tcolour += shade(hit, nrm, trap);\n\t\t\t\}\n\t\t\}\n\t\tcolour /= aa_samples;\n\t\t// distance /= aa_samples;\n\n\t\t// colour = applyFog(colour, distance);\n\n\t\tdst() = float4(colour.x, colour.y, colour.z, 1.0);\n\t\}\n\};"
+ rebuild ""
+ "TestKernel_Image Resolution" {4096 2160}
+ "TestKernel_Max Iterations" 96
+ "TestKernel_Camera Position" {-0.01 1.73 6}
+ "TestKernel_Camera Up" {0 1 -0.15}
+ "TestKernel_Field Of View" 25
+ "TestKernel_AntiAliasing Samples" 1
+ "TestKernel_Occlusion Samples" 12
+ "TestKernel_Fog B" 0.007
+ "TestKernel_Orbit Trap Colour A" {0.19 0.03 0.57}
+ "TestKernel_Orbit Trap Colour B" {0.9 0.75 0.75}
+ "TestKernel_Orbit Trap Intensity" 1.2
+ "TestKernel_Scene Epsilon" 0.0005
+ TestKernel_User {
+     {0.46 1.08 {"3.0 + fabs((sin(frame * \[knob \"animspeed\"])) * 5.0)"}}
+     {1.75 0.08 32}
+     {0 0.5 8.14}
+   }
+ TestKernel_User2 {
+     {0.045 0 0}
+     {0 0 0}
+     {0 0 0}
+   }
+ TestKernel_lightPositions {-0.5 2.995212763 4 0 {"((cos(frame * \[knob \"animspeed\"] )))"} {"((sin(frame  * \[knob \"animspeed\"]))) "}}
+ TestKernel_lightColours {0.902 0.901 0.98 0 1 0.5}
+ TestKernel_lightIntensities {30 5}
+ format "4096 2160 0 0 4096 2160 1 4K_DCP"
+ rebuild_finalise ""
+ maxTileLines 40
+ name BlinkScript1
+ xpos 181
+ ypos -117
+ addUserKnob {20 User}
+ addUserKnob {7 animspeed l "Animation Speed" R 0 10}
+ animspeed 0.005
+}
+clone $C7266410 {
+ xpos 181
+ ypos -60
+ selected false
+}
+set N7266410 [stack 0]
 Viewer {
- frame 327
+ inputs 2
+ frame 75
  frame_range 1-628
  fps 25
  name Viewer1
- xpos -168
- ypos 85
+ xpos 272
+ ypos 22
+}
+push $N72be520
+Write {
+ file /mnt/netdev/tom.minor/fractal_renders/white/white_%04d.png
+ file_type png
+ checkHashOnRead false
+ name Write4
+ xpos 365
+ ypos 64
+ addUserKnob {20 caravr l CaraVR}
+ addUserKnob {4 viewPresets l "View Presets" M {main stereo cams all}}
+ addUserKnob {22 set l Set -STARTLINE T "w = nuke.thisNode()\nscriptViews = nuke.views()\nviewPreset = w\['viewPresets'].getValue()\nselectedViews = None\nif viewPreset == 0:\n  selectedViews = \['main']\nif viewPreset == 1:\n  stereoViews = \['left', 'right']\n  if set(stereoViews).issubset(set(scriptViews)):\n    selectedViews = stereoViews\n  else:\n    selectedViews = None\nelif viewPreset == 2:\n  selectedViews = \[v for v in scriptViews if 'cam' in v.lower()]\nelif viewPreset == 3:\n  selectedViews = scriptViews\nif selectedViews:\n  w\['views'].fromScript(' '.join(selectedViews))\n"}
+}
+push $N7266410
+Write {
+ file /mnt/netdev/tom.minor/fractal_renders/orbit/orbit_%04d.png
+ file_type png
+ checkHashOnRead false
+ name Write3
+ xpos 181
+ ypos 62
+ addUserKnob {20 caravr l CaraVR}
+ addUserKnob {4 viewPresets l "View Presets" M {main stereo cams all}}
+ addUserKnob {22 set l Set -STARTLINE T "w = nuke.thisNode()\nscriptViews = nuke.views()\nviewPreset = w\['viewPresets'].getValue()\nselectedViews = None\nif viewPreset == 0:\n  selectedViews = \['main']\nif viewPreset == 1:\n  stereoViews = \['left', 'right']\n  if set(stereoViews).issubset(set(scriptViews)):\n    selectedViews = stereoViews\n  else:\n    selectedViews = None\nelif viewPreset == 2:\n  selectedViews = \[v for v in scriptViews if 'cam' in v.lower()]\nelif viewPreset == 3:\n  selectedViews = scriptViews\nif selectedViews:\n  w\['views'].fromScript(' '.join(selectedViews))\n"}
 }
