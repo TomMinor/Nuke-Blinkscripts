@@ -4,6 +4,8 @@
 
 ///**** TODO ****
 // * Clean up this code, very rough atm
+//		+ The trap value 'bubbles' up through a bunch of functions, crap design
+//		+ Clean up the UI, remove the user/user2 params and link up stuff explicitly
 // * Define camera via rotation angles
 // * Make the scene the foundry logo?
 // * Check the cool posts about magnetic pole stuff I found ages ago
@@ -14,13 +16,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	Image<eWrite, eAccessPoint, eEdgeNone> dst;
 
 	local:
-	// Careful, these constants don't seem to be properly initialised
-	const float MAX_DIST = 9999999.9f;
-	
+	static const float MAX_DIST = 9999999.9f;
 	static const int MAX_LIGHTS = 2;
-	float3 m_light_position[MAX_LIGHTS];
-	float3 m_light_colour[MAX_LIGHTS];
-	float m_light_strength[MAX_LIGHTS];
 
 	param:
 	int2 resolution;
@@ -28,7 +25,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	
 	float3 camPos;
 	float3 camDir;
-	float3 camUp;
+	// float3 camUp;
 	float fov;
 
 	int aa_samples;
@@ -55,10 +52,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		defineParam(resolution, "Image Resolution", int2(1280, 720) );
 		defineParam(iterations, "Max Iterations", 100);
 
-		defineParam(camPos, "Camera Position", float3(0.0f, 0.05f, 0.2f) );
-		defineParam(camDir, "Camera Direction", float3(1.0f, 0.0f, 0.0f) );
-		defineParam(camUp, "Camera Up", float3(0.0f, 1.0f, 0.0f) );
-
+		defineParam(camPos, "Camera Position", 	float3(0.0f, 1.0f, 2.0f) );
+		defineParam(camDir, "Camera Angles", float3(-26.0f, 0.0f, 180.0f) );
 		defineParam(fov, "Field Of View", 50.0f);
 
 		defineParam(aa_samples, "AntiAliasing Samples", 4);
@@ -83,21 +78,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	
 	void init()
 	{
-		// m_light_position[0]   = float3(3.0f, 8.0f, -2.0f);
 
-		// m_light_colour[0] 	= float3(230 / 255.0f, 230 / 255.0f, 250 / 255.0f);
-		// m_light_strength[0]	= 180.0f;
-
-		// m_light_position[1]   = float3(-3.0f, 3.0f, -2.0f);
-		// m_light_colour[1] 	= float3(255 / 255.0f, 228 / 255.0f, 196 / 255.0f);
-		// m_light_strength[1]	= 40.0f;
-
-		for(int i = 0; i < MAX_LIGHTS; i++)
-		{
-			m_light_position[i] = lightPositions[i];
-			m_light_colour[i] 	= lightColours[i];
-			m_light_strength[i] = lightIntensities[i];
-		}
 	}
 
 	// http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -150,22 +131,14 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	}
 
 	float map(float3 _p, float& _trap)
-	// float map(float3 _p)
 	{
 		float3 p = _p;
-		float d3 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
+		float d1 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
 		
-		p = p - float3(0.0f, user[1], 0.0f);
-		// p = repeatXYZ(p, float3(user[0], user[0], user[0]) );
-		// float d2 = sdSphere(p, 0.1f);
-		// float d2 = sdBox(p, float3(0.1f) );
-
-		float3 p2 = _p - float3(user[6], user[7], user[8]);
-		
+		p = p - float3(0.0f, 1.1f, 0.0f);
 		float d2 = sdMandelbulb(p, user[2], int(user[5]), _trap);
-		// float d2 = sdMandelbulb(p, user[2], int(user[5]));
 		
-		return min(d2, d3);
+		return min(d2, d1);
 	}
 
 		// Classic AO
@@ -226,23 +199,6 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	}
 
 	// http://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm
-	float shadow(float3 _ro, float3 _rd, float _mint, float _maxt)
-	{
-		for(float t = _mint; t < _maxt; )
-		{
-			float tmptrap = 0.0f;
-			float h = map(_ro + _rd*t, tmptrap);
-			if(h < 0.001)
-			{
-				return 0.0f;
-			}
-
-			t += h;
-		}
-
-		return 1.0f;
-	}
-
 	float softshadow(float3 _ro, float3 _rd, float _mint, float _maxt, float _k)
 	{
 		float result = 1.0f;
@@ -268,7 +224,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 
 		for(int i = 0; i < MAX_LIGHTS; i++)
 		{
-			float3 light_path = _p - m_light_position[i];
+			float3 light_path = _p - lightPositions[i];
 			float3 light_dir = normalize(light_path);
 			float attenuation = 1.0f / pow(length(light_path), 2);
 			float halflambert = (max(dot(normalize(_n), light_dir), 0.0f) + 0.5f) * 0.5f; // Soften up the diffuse lighting a little
@@ -277,7 +233,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			shadowed = clamp(shadowed, 0.025f, 1.0f);
 
 			float3 diffuse_colour = mix( float3(1.0f), mix( trap_colour_a, trap_colour_b, _trap), orbit_trap_intensity);
-			radiance +=  diffuse_colour * (halflambert * m_light_colour[i] * m_light_strength[i] * attenuation) * shadowed;
+			radiance +=  diffuse_colour * (halflambert * lightColours[i] * lightIntensities[i] * attenuation) * shadowed;
 		}
 
 		return radiance * hemisphericalOcclusion(_p, _n, user[3], user[4]);
@@ -303,19 +259,50 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			));
 	}
 
-	float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)
+	// float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float3 _camUp, float _fov)
+	// {
+	// 	_camDir = normalize(_camDir);
+	// 	float3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);
+	// 	float3 forward = cross(_camUp, right );
+
+	// 	float aspect = float(resolution.x) / float(resolution.y);
+	// 	float u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);
+	// 	float v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);
+	// 	float fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));
+
+	// 	float3 rayOrigin = _camPos;
+	// 	float3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );
+
+	// 	return rayDir;
+	// } 
+
+	float3 cameraRay(float2 _fragcoord, float3 _camPos, float3 _camDir, float _fov)
 	{
-		_camDir = normalize(_camDir);
-		float3 right = _camDir;//float3(1.0f, 0.0f, 0.0f);
-		float3 forward = cross(_camUp, right );
+		int x = _fragcoord.x;
+		int y = _fragcoord.y;
 
-		float aspect = float(resolution.x) / float(resolution.y);
-		float u = aspect * (_fragcoord.x * 2.0f / resolution.x - 1.0f);
-		float v = (_fragcoord.y * 2.0f / resolution.y - 1.0f);
-		float fov_ratio = (0.5f*aspect) / (tan(radians(fov * 0.5f)));
+		float imageAspectRatio = resolution.x / (float)resolution.y; 
+		float Px = (2.0f * ((x + 0.5f) / resolution.x) - 1.0f) * tan(_fov / 2.0f * PI / 180.0f) * imageAspectRatio;
+		float Py = (1.0f - 2.0f * ((y + 0.5f) / resolution.y) * tan(_fov / 2.0f * PI / 180.0f)); 
 
-		float3 rayOrigin = _camPos;
-		float3 rayDir = normalize( forward*fov_ratio + right*u + _camUp*v );
+		float4x4 camToWorld = float4x4_identity;
+		
+		// Todo, do this in init() instead
+		float4x4 rotX, rotY, rotZ, translation;
+		translation.setTranslate( float4(_camPos.x, _camPos.y, _camPos.z, 1.0f) );
+		rotX.setRotateX( radians(_camDir.x) );	 // Should these be in radians or degrees?
+		rotY.setRotateY( radians(_camDir.y) );
+		rotZ.setRotateZ( radians(_camDir.z) );
+
+		camToWorld = translation * (rotZ * rotY * rotX);
+		camToWorld = camToWorld.invert();
+		
+		float3 rayOrigin = float3(0.0f, 0.0f, 0.0f);
+		float4 rayOriginWorld = camToWorld * float4(rayOrigin.x, rayOrigin.y, rayOrigin.z, 1.0f);
+		float4 PWorld = camToWorld * float4(Px, Py, -1.f, 1.0f);
+
+		float4 tmp = PWorld - rayOriginWorld;
+		float3 rayDir = normalize( float3(tmp.x, tmp.y, tmp.z) );
 
 		return rayDir;
 	}
@@ -373,7 +360,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		{
 			float2 random_sample = rand( uv + (float2(j,j) * 0.1f) );
 
-			float3 rd = cameraRay(uv + random_sample, camPos, camDir, camUp, fov);
+			float3 rd = cameraRay(uv + random_sample, camPos, camDir, fov);
 
 			float3 hit = float3(0.0f);
 			float trap = 1e20f;
