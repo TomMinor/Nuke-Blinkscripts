@@ -3,11 +3,11 @@
 #include "sdf_primitives.h"
 
 ///**** TODO ****
+// * Hemispherical occlusion is wrong
+// * Apply AO only to ambient, don't scale everything by it
 // * Clean up this code, very rough atm
 //		+ The trap value 'bubbles' up through a bunch of functions, crap design
-// * Define camera via rotation angles
 // * Make the scene the foundry logo?
-// * Check the cool posts about magnetic pole stuff I found ages ago
 
 kernel TestKernel : ImageComputationKernel<ePixelWise>
 {
@@ -17,9 +17,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	local:
 	static const float MAX_DIST = 9999999.9f;
 	static const int MAX_LIGHTS = 2;
+	int2 resolution;
 
 	param:
-	int2 resolution;
 	int iterations;
 	
 	float3 camPos;
@@ -59,7 +59,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	void define()
 	{
 		// @todo Ideally this should be linked up to format
-		defineParam(resolution, "Image Resolution", int2(1280, 720) );
+		// defineParam(resolution, "Image Resolution", int2(1280, 720) );
 
 		// ----------- Accuracy ---------------		
 		defineParam(iterations, "Max Iterations", 100);
@@ -111,6 +111,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 	
 	void init()
 	{
+		resolution = float2( dst.bounds.x2 - dst.bounds.x1, dst.bounds.y2 - dst.bounds.y1 );
+
 		// lightPositions[0] = float3( -0.5f, 3.0f, 4.0f );
 		// lightColours[0]	  = float3( 0.9f, 0.9f, 0.98f );
 		// lightIntensities[0]	= 30.0f;
@@ -220,8 +222,8 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		{
 			float tmptrap = 0.0f;
 			float h = map(_ro + _rd*t, tmptrap);
-			if(h < 0.001)
-			{
+			if(h < 0.001
+)			{
 				return 0.0f;
 			}
 
@@ -250,7 +252,9 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 			radiance +=  diffuse_colour * (halflambert * lightColours[i] * lightIntensities[i] * attenuation) * shadowed;
 		}
 
-		return radiance * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f);
+		float3 ambient(0.025f, 0.025f, 0.05f);
+		return radiance + (ambient * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f) );
+		// return (ambient * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f) );
 	}
 
 	// Finite difference estimation
