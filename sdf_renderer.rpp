@@ -171,13 +171,46 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		return dist;
 	}
 
+	float sdCross(float3 _p)
+	{
+		float3 a = float3(_p.x, _p.y, _p.z);
+		float3 b = float3(_p.y, _p.z, _p.x);
+		float3 c = float3(_p.z, _p.x, _p.y);
+
+		float inf = 10000000.0f;
+		float da = sdBox(a, float3(inf, 1.0f, 1.0f));
+		float db = sdBox(b, float3(1.0f, inf, 1.0f));
+		float dc = sdBox(c, float3(1.0f, 1.0f, inf));
+
+		return min(da, min(db, dc));
+	}
+
+	float sdMandelbox(float3 _p, float _power, float _iterations, float& _trap)
+	{
+		float d = sdBox(_p, float3(1.0f));
+		float scale = 1.0f;
+
+		for(int i = 0; i < 4; i++)
+		{
+			float3 a = fmod(_p * scale, 2.0f) - 1.0f;
+			scale *= 3.0f;
+
+			float3 r = 1.0f - 3.0f * fabs(a);
+
+			float c = sdCross(r) / scale;
+			d = max(d,c);
+		}
+
+		return d;
+	}
+
 	float map(float3 _p, float& _trap)
 	{
 		float3 p = _p;
 		float d1 = sdPlane(p, float4(0.0f, 1.0f, 0.0f, 0.0f) );
 		
 		p = p - float3(0.0f, 1.1f, 0.0f);
-		float d2 = sdMandelbulb(p, mandelbulb_power, mandelbulb_search_iterations, _trap);
+		float d2 = sdMandelbox(p, mandelbulb_power, mandelbulb_search_iterations, _trap);
 		
 		return min(d2, d1);
 	}
@@ -253,8 +286,7 @@ kernel TestKernel : ImageComputationKernel<ePixelWise>
 		}
 
 		float3 ambient(0.025f, 0.025f, 0.05f);
-		return radiance + (ambient * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f) );
-		// return (ambient * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f) );
+		return (ambient * (occlusion_enabled ? hemisphericalOcclusion(_p, _n, occlusion_maxdist, occlusion_falloff) : 1.0f) );
 	}
 
 	// Finite difference estimation
